@@ -43,7 +43,7 @@ export default function Register() {
 
       // Profile creation is now automatically handled by PostgreSQL trigger handling the auth.users INSERT event.
 
-      navigate('/verify-email');
+      navigate('/verify-email', { state: { email } });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {

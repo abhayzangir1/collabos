@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Mail, RefreshCw } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { supabase } from '@/lib/supabase';
@@ -6,7 +7,12 @@ import { useAuthStore } from '@/store';
 
 export default function VerifyEmail() {
   const { t } = useI18n();
+  const location = useLocation();
   const { user } = useAuthStore();
+  
+  // Try to get email securely from our strict router state or fallback to global store
+  const targetEmail = location.state?.email || user?.email;
+  
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
@@ -15,9 +21,8 @@ export default function VerifyEmail() {
     setLoading(true);
     setError('');
     try {
-      const email = user?.email;
-      if (!email) throw new Error('No email found');
-      const { error } = await supabase.auth.resend({ type: 'signup', email });
+      if (!targetEmail) throw new Error('No email found to resend to.');
+      const { error } = await supabase.auth.resend({ type: 'signup', email: targetEmail });
       if (error) throw error;
       setSent(true);
     } catch (err) {
@@ -65,7 +70,7 @@ export default function VerifyEmail() {
           {t('auth.verify.subtitle')}
         </p>
 
-        {user?.email && (
+        {targetEmail && (
           <div style={{
             padding: '0.75rem 1rem',
             background: 'var(--surface-1)',
@@ -77,7 +82,7 @@ export default function VerifyEmail() {
             marginBottom: '1.5rem',
             wordBreak: 'break-all',
           }}>
-            {user.email}
+            {targetEmail}
           </div>
         )}
 
