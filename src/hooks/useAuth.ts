@@ -63,7 +63,7 @@ export function useAuth() {
       // Log failed login to audit log
       await supabase.from('audit_log').insert({
         event_type: 'failed_login',
-        metadata: { email, error: error.message },
+        metadata: { error: error.message },
       });
       throw error;
     }
@@ -83,7 +83,6 @@ export function useAuth() {
       await supabase.from('profiles').upsert({
         id: data.user.id,
         mononym,
-        email,
         dna_type: dnaType,
         custom_dna_label: customDnaLabel ?? null,
         custom_dna_tags: customDnaTags ?? [],

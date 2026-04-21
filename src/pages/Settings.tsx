@@ -15,7 +15,7 @@ export default function Settings() {
   // updateProfile removed
 
   const [mononym, setMononym] = useState(profile?.mononym ?? '');
-  const [email, setEmail] = useState(profile?.email ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
   const [dnaType, setDnaType] = useState<DnaType | 'Custom'>(profile?.dna_type as DnaType ?? 'Builder');
   const [customLabel, setCustomLabel] = useState(profile?.custom_dna_label ?? '');
   const [saving, setSaving] = useState(false);
@@ -35,11 +35,14 @@ export default function Settings() {
   useEffect(() => {
     if (profile) {
       setMononym(profile.mononym);
-      setEmail(profile.email);
       setDnaType(profile.dna_type as DnaType | 'Custom');
       setCustomLabel(profile.custom_dna_label ?? '');
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (user?.email) setEmail(user.email);
+  }, [user?.email]);
 
   async function handleSaveProfile() {
     setSaving(true); setSaved(false);
@@ -50,19 +53,19 @@ export default function Settings() {
         custom_dna_label: dnaType === 'Custom' ? customLabel : null,
       }).eq('id', user?.id);
 
-      if (email !== profile?.email) {
+      if (email !== user?.email) {
         await supabase.auth.updateUser({ email });
       }
 
-      useAuthStore.getState().setProfile({ ...profile!, mononym, email, dna_type: dnaType, custom_dna_label: dnaType === 'Custom' ? customLabel : null });
+      useAuthStore.getState().setProfile({ ...profile!, mononym, dna_type: dnaType, custom_dna_label: dnaType === 'Custom' ? customLabel : null });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } finally { setSaving(false); }
   }
 
   async function handleResetPassword() {
-    if (!profile?.email) return;
-    await supabase.auth.resetPasswordForEmail(profile.email, { redirectTo: `${window.location.origin}/settings` });
+    if (!user?.email) return;
+    await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: `${window.location.origin}/settings` });
     await supabase.from('audit_log').insert({ user_id: user?.id, event_type: 'password_change', metadata: {} });
     setResetSent(true);
   }

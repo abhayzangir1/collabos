@@ -28,7 +28,7 @@ export default function Login() {
       if (authError) {
         await supabase.from('audit_log').insert({
           event_type: 'failed_login',
-          metadata: { email, error: authError.message },
+          metadata: { error: authError.message },
         });
         throw authError;
       }

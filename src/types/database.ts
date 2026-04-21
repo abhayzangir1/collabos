@@ -1,7 +1,6 @@
 export interface Profile {
   id: string;
   mononym: string;
-  email: string;
   dna_type: DnaType | 'Custom';
   custom_dna_label: string | null;
   custom_dna_tags: string[];

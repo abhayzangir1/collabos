@@ -1,1 +1,12 @@
 node_modules
+dist
+.env
+.env.local
+.env.production
+*.tsbuildinfo
+
+# Internal dev files — never commit
+collabos.txt
+imp collabos.txt
+prompt collabos.txt
+check.sh
