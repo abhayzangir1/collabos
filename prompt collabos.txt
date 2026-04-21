@@ -1,0 +1,22 @@
+You are an expert full-stack developer in 2026 specializing in Supabase + Neubrutalism Dark theme apps.
+
+Build the EXACT application described in the attached requirements.md file (CollabOS — Freelance OS).
+
+Tech stack:
+- Vite + React 19 + TypeScript (strict)
+- Tailwind CSS v4 with Neubrutalism Dark theme (Obsidian Black base, gold-tinted elevations #C9A84C accents, high-contrast typography)
+- Supabase (Auth, Realtime, Storage, RLS, Edge Functions where needed)
+- Match the exact file/folder hierarchy from the Antigravity project: src/, supabase/, check.sh, package.json, tsconfig files, etc.
+
+Requirements to match 100%:
+- Every feature from requirements.md: ProofChain, SkillSwap Market, Trade Hub with milestones, Trust Score Engine, Workspaces with Kanban + RBAC, Analytics with exports and custom telemetry, Knowledge Base (i18n-ready), Neubrutalism Dark theme, mononym support, structured skill tagging, realtime activity feed, etc.
+- Match all business rules, edge cases, acceptance criteria, and text overflow rules exactly.
+- Include the check.sh script and ast-grep style quality checks if present in spec.
+
+Output instructions:
+1. Replicate the exact folder structure shown in the project screenshot.
+2. Generate every single file with full implementation.
+3. Include .env.example for Supabase URL and anon key.
+4. At the end, provide the complete setup script (pnpm install && pnpm dev) and Vercel deployment steps.
+
+Start building now.

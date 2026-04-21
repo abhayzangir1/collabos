@@ -1,0 +1,776 @@
+# Requirements Document
+
+## 1. Application Overview
+
+**Application Name:** CollabOS — Freelance OS
+
+**Description:** CollabOS is a high-end, skill-based peer trading platform that enables professionals to exchange services without monetary transactions. It functions as a Freelance Operating System — a premium SaaS-grade web application featuring a Trust Score Engine v3.4.0, ProofChain portfolio management with a structured skill tagging system (auto-suggestions and domain-based categorization), a real-time SkillSwap marketplace, trade coordination tools with milestone progression, dispute resolution with escalation, team workspaces with RBAC and Kanban-style trade pipeline visualization, analytics with export capabilities (including high-fidelity professional report export and custom skill growth telemetry tracks), a security audit log, and a fully functional i18n-ready OS Knowledge Base with rich structured content. The visual theme is Neubrutalism Dark with custom gold-tinted elevation levels and high-contrast typography. Authentication, database, storage, and real-time capabilities are powered by Supabase.
+
+---
+
+## 2. Users & Use Cases
+
+### Target Users
+- Freelancers, independent professionals, and skill-based service providers seeking non-monetary peer collaboration.
+- Teams or small collectives managing shared trade pipelines at high volume.
+
+### Core Use Cases
+1. A user onboards by selecting or building a professional DNA type, then builds a ProofChain portfolio with structured skill tags (auto-suggested and domain-categorized) and evidence.
+2. A user browses the SkillSwap Market, filters by keyword, skill tags, or hours range, proposes a trade with milestones, and tracks sequential milestone progression through the Trade Hub.
+3. A user raises a dispute on a specific milestone, blocking completion until resolved; disputes exceeding 7 days display an escalation banner.
+4. A workspace owner invites members and manages shared listings and trade pipelines via RBAC; workspace members visualize and manage high-volume service exchange flows using a Kanban-style trade pipeline board.
+5. A user switches between Light and Dark (Neubrutalism Dark) themes and language preferences globally.
+6. A user exports analytics data as PDF, CSV, or JSON, or as a high-fidelity professional report including chart visualizations.
+7. A user configures custom telemetry tracks on the Analytics page to monitor specific skill growth vectors.
+8. A user reads structured Knowledge Base articles covering platform features, the Trust Algorithm, and use case walkthroughs, with all content rendering correctly in their selected language.
+
+---
+
+## 3. Page Structure & Feature Descriptions
+
+### 3.1 Overall Page Hierarchy
+
+```
+CollabOS
+├── Public Routes
+│   ├── /                        Landing / Marketing Page
+│   ├── /login                   Login
+│   ├── /register                Registration & DNA Onboarding
+│   ├── /verify-email            Email Verification Gate
+│   └── /knowledge-base          OS Knowledge Base (public, fully i18n)
+│       ├── /knowledge-base/getting-started        Getting Started
+│       │   ├── What is CollabOS?
+│       │   ├── Creating Your Account & DNA Profile
+│       │   ├── Building Your ProofChain
+│       │   ├── Navigating the Dashboard
+│       │   └── Your First Trade
+│       ├── /knowledge-base/trust-algorithm        Trust Algorithm
+│       │   ├── How Trust Score is Calculated
+│       │   ├── Events That Affect Your Score
+│       │   ├── Trust Score History & Analytics
+│       │   └── Improving Your Trust Score
+│       └── /knowledge-base/use-cases              Use Cases
+│           ├── Freelancer Skill Exchange
+│           ├── Team Collaboration via Workspaces
+│           ├── Managing High-Volume Trade Pipelines
+│           └── Exporting Analytics & Reports
+├── Protected Routes (requires verified session)
+│   ├── /dashboard               Main Dashboard (4-Zone Layout)
+│   ├── /proofchain              ProofChain Portfolio Manager
+│   ├── /market                  SkillSwap Market
+│   ├── /trades                  Trade Hub (Command Center)
+│   │   └── /trades/[id]         Individual Trade Detail
+│   │       ├── Milestone Stepper
+│   │       ├── Evidence Journal
+│   │       ├── Chat
+│   │       └── Dispute Panel
+│   ├── /analytics               Analytics Page
+│   ├── /workspaces              Workspace Management
+│   │   └── /workspaces/[id]     Individual Workspace
+│   │       ├── Members Tab
+│   │       ├── Shared Trade Pipeline (List View + Kanban View)
+│   │       ├── Shared Listings
+│   │       └── Workspace Settings
+│   └── /settings                User Settings (theme, language, sessions)
+```
+
+---
+
+### 3.2 Public Routes
+
+#### / — Landing / Marketing Page
+- Publicly accessible, no login required.
+- Communicates the platform value proposition: skill-based peer trading, no monetary transactions.
+- Sections:
+  - Hero section with headline, sub-headline, and two CTAs: Get Started (links to /register) and Learn More (smooth-scrolls to Features section).
+  - Features section: highlights Trust Score Engine, ProofChain, SkillSwap Market, and Workspace capabilities with brief descriptions and icons.
+  - How It Works section: three-step visual flow — Create Profile → List Skills → Trade & Grow.
+  - Knowledge Base teaser: brief description with a link to /knowledge-base.
+  - Footer: links to /knowledge-base, /login, /register, and a copyright notice.
+- No user-generated content is displayed on the landing page.
+- All text elements use truncation or wrapping rules to prevent overflow; no text may bleed outside its container boundary anywhere on the page.
+
+#### /login — Login
+- Email and password fields.
+- Submit triggers Supabase email/password authentication.
+- On success: redirect to /dashboard.
+- On failure: inline error message displayed beneath the form.
+- Link to /register for new users.
+- Link to trigger password reset flow (sends reset email via Supabase Auth).
+- Failed login attempts are logged to the Security Audit Log.
+- All form labels, error messages, and helper text wrap correctly within their containers; no text overflow permitted.
+
+#### /register — Registration & DNA Onboarding
+- **Step 1 — Account Creation:** Email, password, and mononym (single-name identity supported, e.g., Dheeraj).
+- **Step 2 — DNA Selection:** User selects one of the predefined professional DNA types: Builder, Visionary, Strategist, Connector, Analyst, Operator. Alternatively, user may use the Custom DNA builder to define their own type with a label and up to 3 descriptive tags.
+- On completion, a verification email is sent. User is redirected to /verify-email.
+- All step labels, option labels, and descriptive text wrap correctly; no text overflow permitted.
+
+#### /verify-email
+- Displays a prompt to check email and verify account.
+- Unverified users attempting to access protected routes are redirected here.
+- Resend verification email action available.
+- On successful email verification via the link in the email, user is redirected to /dashboard.
+
+#### /knowledge-base — OS Knowledge Base
+
+**Architecture & Navigation**
+- Publicly accessible, no login required.
+- Three top-level sections rendered as a persistent left sidebar navigation: Getting Started, Trust Algorithm, Use Cases.
+- Each section expands to reveal its child articles in the sidebar.
+- Clicking an article title navigates to that article's content in the main reading pane.
+- The active article is highlighted in the sidebar.
+- A breadcrumb trail is displayed at the top of the reading pane (e.g., Knowledge Base > Getting Started > Building Your ProofChain).
+- A search bar at the top of the sidebar allows users to search article titles and body content; matching results are listed with the article title and a short excerpt; clicking a result navigates to that article.
+- All content is fully translatable via the i18n system; switching language in Settings causes the Knowledge Base to re-render instantly in the selected language.
+- Read-only; no user interaction beyond navigation and search.
+- All content blocks, headings, and body text wrap correctly within their layout containers; no text overflow permitted.
+
+**Getting Started Section — Article Content**
+
+*What is CollabOS?*
+- Explains the platform concept: a skill-based peer trading OS where professionals exchange services without money.
+- Describes the core components: ProofChain, SkillSwap Market, Trade Hub, Trust Score Engine, Workspaces, Analytics.
+- Includes a brief overview of the Neubrutalism Dark visual theme and i18n support.
+
+*Creating Your Account & DNA Profile*
+- Step-by-step walkthrough of the registration flow: account creation (email, password, mononym), DNA type selection (Builder, Visionary, Strategist, Connector, Analyst, Operator), and Custom DNA builder.
+- Explains what a mononym is and why a surname is not required.
+- Explains the email verification step and what to do if the verification email is not received (resend action).
+
+*Building Your ProofChain*
+- Explains what a proof is and its role in establishing credibility.
+- Describes how to add a proof: title, description, skill tags (with auto-suggestions and domain grouping), value, optional file upload, optional external link.
+- Explains the Verified / Locked status: proofs confirmed by a counterparty in a completed trade are locked and cannot be edited.
+- Explains pinning: up to 3 proofs may be pinned to the public profile; pinned proofs appear in listing detail views.
+- Explains bulk actions: Select All, Bulk Pin, Bulk Export to PDF.
+- Explains the 10-tag maximum per proof and the Custom domain label for free-text tags.
+
+*Navigating the Dashboard*
+- Describes the 4-Zone Layout: KPI Summary Bar (Total Proofs, Active Trades, Trust Score with real-time count-up), Contextual Primary Action (Browse Market or Complete Milestone based on user state), Real-time Activity Feed and Quick Actions, Persistent Sidebar (desktop side-rail; mobile bottom nav).
+- Explains unread badge counts on Trades and how they are cleared.
+- Explains the Professional Empty State shown when no actionable state exists.
+
+*Your First Trade*
+- End-to-end walkthrough: browse the SkillSwap Market → filter by skill tags or keyword → open a listing detail → click Propose Trade → confirm skills → optionally define 2–5 milestones (each with title, description, date) → review and submit.
+- Explains what happens after proposal: the recipient sees the proposal in their Activity Feed and Trade Hub; they may Accept or Decline.
+- Explains the milestone progression flow: sequential enforcement, dual-confirmation, Evidence Journal, Chat, and how trade completion triggers Trust Score recalculation.
+
+**Trust Algorithm Section — Article Content**
+
+*How Trust Score is Calculated*
+- States the formula explicitly:
+  - Trust Score = (Trades Completed × 10) + (Verified Proofs × 8) + (Unverified Proofs × 3) + (Endorsements × 2)
+- Explains each component: what counts as a completed trade, what makes a proof verified, what an endorsement is (note: endorsement submission UI is deferred to a future release; the formula accounts for endorsements received).
+
+*Events That Affect Your Score*
+- Lists qualifying recalculation events: trade completion, proof verification (locked by counterparty), endorsement received.
+- Explains that both parties in a completed trade receive a simultaneous recalculation event.
+- Explains that every recalculation logs a record to trust_score_history with: new score, delta, event type, and timestamp.
+
+*Trust Score History & Analytics*
+- Explains that the full score history is available on the Analytics page as a time-series line chart.
+- Describes the date range filter and how it scopes the Trust Score trend chart.
+- Notes that the Summary Metrics Panel on Analytics displays the current Trust Score.
+
+*Improving Your Trust Score*
+- Practical guidance: complete trades with milestone evidence, add and verify proofs, maintain a consistent skill profile.
+- Notes that verified (locked) proofs contribute more to the score than unverified proofs.
+- Notes that the endorsement mechanism for submitting endorsements is planned for a future release.
+
+**Use Cases Section — Article Content**
+
+*Freelancer Skill Exchange*
+- Scenario: a designer needs copywriting; a copywriter needs UI design. Both create listings, find each other in the SkillSwap Market, propose a trade with milestones, submit evidence, and complete the trade.
+- Highlights how Trust Scores improve for both parties upon completion.
+- Highlights how pinned proofs from completed trades build a verifiable portfolio.
+
+*Team Collaboration via Workspaces*
+- Scenario: a small collective of 5 freelancers creates a workspace to manage shared client trade pipelines.
+- Explains workspace creation, member invitation, role assignment (Owner, Admin, Member), and RBAC permissions.
+- Explains shared listings: Admins and Owner create listings on behalf of the workspace; Members view them.
+- Explains the Shared Trade Pipeline: List View for tabular overview; Kanban View for visual pipeline management.
+- Notes that invitation links expire after 7 days and can be revoked by Owner or Admin.
+
+*Managing High-Volume Trade Pipelines*
+- Scenario: a workspace Admin uses the Kanban board to manage 20+ concurrent trades.
+- Explains the Kanban columns (Proposed, Active, Disputed, Completed, Declined), card content (counterparty mononym, skill tags with domain labels, milestone progress, assigned members, last activity timestamp), and real-time updates via Supabase Realtime.
+- Explains drag-and-drop: Admin/Owner may drag cards from Proposed to Active to accept trades; all other transitions are system-driven.
+- Explains the +N more indicator for skill tag overflow on cards.
+
+*Exporting Analytics & Reports*
+- Scenario: a freelancer wants to share their performance data with a potential client.
+- Explains the standard data export (PDF, CSV, JSON) and how the date range filter scopes the export.
+- Explains the high-fidelity professional report export: cover section (mononym, date range, current Trust Score) → Trust Score trend chart → Skill Category breakdown → Hourly Exchange Balance → active custom telemetry track charts → Summary Metrics Panel.
+- Notes that charts with no data in the selected range are omitted with a per-section note, and that the export is blocked if all charts have no data.
+- Explains custom telemetry tracks: how to create a track (Track Name, Skill Tags via structured tagging system, Metric Type), the 5-track maximum, and how track panels respect the active date range filter.
+
+---
+
+### 3.3 Protected Routes
+
+#### /dashboard — Main Dashboard (4-Zone Layout)
+
+**Zone A — KPI Summary Bar**
+- Displays real-time count-up animated counters for: Total Proofs, Active Trades, Trust Score.
+- Values update in real time via Supabase Realtime subscription.
+- The Supabase Realtime subscription for the dashboard KPI bar subscribes to changes on the relevant user records (proofs table, trades table, trust_score_history table) and updates counter values without page refresh.
+- Counter labels and values are constrained to their cells; long values are formatted (e.g., abbreviated with k/M suffix) to prevent overflow.
+
+**Zone B — Contextual Primary Action**
+- Contextual primary CTA based on user state:
+  - Zero trades → Browse Market button.
+  - Active trade with pending milestone → Complete Milestone button linking to the relevant trade.
+- If no actionable state exists, displays a Professional Empty State: an illustration with an actionable prompt (e.g., Start by adding your first Proof).
+- CTA labels and prompt text wrap within their containers; no text overflow permitted.
+
+**Zone C — Real-time Activity Feed & Quick Actions**
+- Left column: Real-time Activity Feed — chronological list of events (trade proposals received, milestone confirmations, endorsements, dispute updates). Powered by Supabase Realtime.
+  - The Activity Feed subscribes to a dedicated notifications or activity_feed table in Supabase; new rows inserted by backend triggers are broadcast to the relevant user's subscription channel and prepended to the feed list without page refresh.
+  - Each feed entry displays: event type icon, descriptive text, and relative timestamp.
+- Right column: Quick Actions — shortcut buttons to: Add Proof, Browse Market, Create Listing, Invite to Workspace.
+- Activity feed entries truncate long mononyms or event descriptions with an ellipsis and expose the full text via tooltip; no text may overflow its row container.
+
+**Zone D — Persistent Sidebar**
+- Desktop: Side-rail navigation with icon + label links to all main sections. Unread badge counts on Trades and relevant notifications.
+- Mobile: Bottom navigation bar with the same links and badge counts.
+- Navigation labels truncate gracefully if the sidebar is in a collapsed state; badge count numerals are capped at display 99+ to prevent badge overflow.
+
+**Backend Requirements for Dashboard**
+- Supabase Realtime channels must be correctly configured for the authenticated user on page mount: one channel for KPI counters (subscribing to INSERT/UPDATE on proofs, trades, trust_score_history filtered by user_id), one channel for the Activity Feed (subscribing to INSERT on activity_feed filtered by recipient_user_id).
+- Channels must be unsubscribed and cleaned up on component unmount to prevent memory leaks and duplicate event delivery.
+- The backend must insert activity_feed rows for all qualifying events: trade proposal received, milestone marked complete by counterparty, dispute opened or updated, endorsement received, workspace invitation accepted.
+- Badge counts are derived from unread activity_feed rows; marking a section as visited triggers a backend update to mark relevant rows as read.
+
+---
+
+#### /proofchain — ProofChain Portfolio Manager
+
+- Displays all user proofs in a grid/list view toggle.
+- Each proof card shows: title, description, skill tags (with domain category label), value indicator, media/link, verification status (Verified — Locked / Unverified), and a pinned badge if the proof is currently pinned.
+- **Text overflow rules for proof cards:** Title is clamped to 2 lines with ellipsis overflow. Description is clamped to 3 lines with ellipsis overflow. Skill tag chips that exceed the card width wrap to a second row; if more than one row of tags would be needed, remaining tags are collapsed behind a +N more indicator.
+- **Verified / Locked status:** Proofs confirmed by a counterparty in a completed trade are marked Locked and cannot be edited.
+- **Add Proof:** Form with title, description, skill tags (see Structured Skill Tagging System below), value, optional file upload (stored in Supabase Storage, accessed via signed URLs), and optional external link.
+- **Edit Proof:** Available only on Unverified (unlocked) proofs. Locked proofs display a read-only view.
+- **Delete Proof:** Available only on Unverified (unlocked) proofs. A confirmation dialog is shown before deletion. Deleting a pinned proof automatically removes it from the pinned set.
+- **Bulk Actions:**
+  - Select All toggle.
+  - Bulk Pin: User may pin up to 3 proofs to their public profile simultaneously. Attempting to pin a 4th prompts selection of which existing pinned proof to replace.
+  - Bulk Export to PDF: User selects multiple proofs and exports them as a single PDF document.
+- Professional Empty State shown when no proofs exist.
+
+**Structured Skill Tagging System**
+- Skill tags in ProofChain are organized under a domain-based categorization structure.
+- Predefined top-level domains include categories such as: Engineering, Design, Marketing, Writing, Data & Analytics, Operations, Legal & Finance, and Others. Each domain contains a curated set of sub-tags.
+- When a user types in the skill tag input field, the system provides real-time auto-suggestions drawn from the predefined tag library, filtered by the characters entered.
+  - Suggestions are displayed in a dropdown list grouped by domain.
+  - The user may select a suggested tag or type a custom tag not present in the library.
+  - Custom tags are accepted as free-text entries and are not assigned to a predefined domain; they are displayed with a Custom domain label.
+- Each tag on a proof card displays its domain category as a secondary label (e.g., Engineering · React, Design · Figma).
+- The skill tag input on the Add Proof and Edit Proof forms supports adding multiple tags per proof.
+- The same structured tagging system and auto-suggestion behavior applies wherever skill tags are entered across the platform (e.g., Create Listing in the SkillSwap Market, Custom Telemetry Track configuration in Analytics).
+
+**Backend Requirements for ProofChain**
+- All proof CRUD operations (create, read, update, delete) are performed via Supabase with RLS policies ensuring users can only access their own proof records.
+- File uploads for proof media are stored in a dedicated Supabase Storage bucket (e.g., proof-media); the backend generates a signed URL upon each read request, scoped to the authenticated user.
+- The locked status of a proof is set by a backend trigger or function when a trade reaches Completed state; the trigger identifies all proofs referenced in the completed trade and sets their is_locked flag to true.
+- The pinned_proofs field is stored as an array of proof IDs on the user record (maximum 3 entries); updates are validated server-side to enforce the 3-pin limit.
+- Bulk PDF export is generated client-side from the selected proof data already loaded in the frontend; no separate backend endpoint is required for PDF generation.
+- The predefined skill tag library is stored in a read-only Supabase table (skill_tags) with columns: id, domain, label; users cannot insert, update, or delete rows in this table (RLS: SELECT only for authenticated users).
+
+---
+
+#### /market — SkillSwap Market
+
+- Displays all active skill listings from all users.
+- **Search & Filter:**
+  - Real-time search by skill keyword.
+  - Filter by skill tags (with domain-grouped tag picker consistent with the structured tagging system).
+  - Filter by hours range.
+- Each listing card shows: user mononym, DNA type, skill offered, skill requested in exchange, Trust Score.
+- **Text overflow rules for listing cards:** Mononym is truncated with ellipsis if it exceeds the allocated width. Skill offered and skill requested labels are each clamped to 1 line with ellipsis overflow. Trust Score value is formatted to prevent numeric overflow.
+- **Listing Detail View:** Clicking a listing card opens a detail panel or modal showing full listing description, the lister's pinned proofs (up to 3), and the Propose Trade CTA. All text within the detail panel wraps correctly; no overflow permitted.
+- **Propose Trade flow:**
+  - User selects a listing and clicks Propose Trade.
+  - Multi-step form:
+    - Step 1: Confirm skills being exchanged.
+    - Step 2: Milestone Toggle. If enabled, proposer defines 2–5 milestones, each with a Title, Description, and Date.
+    - Step 3: Review and submit.
+  - System blocks a user from proposing a trade with themselves at the API/backend level.
+- **Incoming Trade Proposals:** Users receive trade proposals from other users. Proposals appear in the Activity Feed on the dashboard and are accessible from the Trade Hub. The recipient may Accept or Decline a proposal.
+  - On Accept: a trade record is created and both parties are redirected or linked to /trades/[id].
+  - On Decline: the proposal is marked declined; the proposer sees a declined status on their trade entry.
+- **Create Listing:** Authenticated users may create a listing specifying skill offered and skill requested, using the structured skill tagging system with auto-suggestions.
+- **Edit Listing:** Users may edit their own listings from the Market page or from their listing card. Editing is available for both active and deactivated listings owned by the current user.
+- **Deactivate Listing:** Users may deactivate their own listings, removing them from the public marketplace view while retaining the listing record.
+- **Delete Listing (Permanent):** Users may permanently delete their own listings. A confirmation dialog is shown before deletion. Once deleted, the listing record is removed and cannot be recovered. Listings that are currently referenced by an active or proposed trade cannot be deleted until the trade reaches a terminal state (Completed or Declined).
+- Professional Empty State shown when no listings exist.
+
+**Backend Requirements for SkillSwap Market**
+- The listings table has RLS policies: SELECT is open to all authenticated users for active listings; INSERT, UPDATE, DELETE are restricted to the listing owner.
+- The self-trade block is enforced at the database level via a CHECK constraint or a Supabase Edge Function that validates proposer_user_id ≠ listing_owner_user_id before inserting a trade proposal record.
+- Trade proposal creation inserts a row into the trades table (status: Proposed) and simultaneously inserts an activity_feed row for the listing owner (recipient) notifying them of the new proposal.
+- Listing deletion is blocked by a database-level constraint or Edge Function that checks for any trades referencing the listing_id with status IN (Proposed, Active) before allowing DELETE.
+- The hours_range field on listings is stored as a numeric value or range type; the filter query uses a WHERE clause with the user-selected min/max bounds.
+- Skill tag filtering on the market uses a contains or overlap query against the skill_tags array column on the listings table.
+
+---
+
+#### /trades — Trade Hub (Command Center)
+
+- Lists all active and completed trades for the current user, including incoming proposals awaiting response.
+- Each trade entry shows: counterparty mononym, trade status (Proposed / Active / Completed / Declined / Disputed), current milestone, last activity timestamp.
+- **Text overflow rules for trade entries:** Counterparty mononym is truncated with ellipsis if it exceeds the allocated column width. Status badges use fixed-width chips. Timestamp values are formatted to a consistent short date-time string that fits within its column.
+- Tabs or filter controls to switch between: All, Active, Completed, Proposed (incoming), Declined.
+- Professional Empty State shown when no trades exist.
+
+#### /trades/[id] — Individual Trade Detail
+
+**Trade Header**
+- Displays: trade status badge, counterparty mononym and DNA type, date created, and overall trade progress (e.g., 2 of 4 milestones completed).
+- Mononym and DNA type truncate with ellipsis if the header container is too narrow; full values are exposed via tooltip.
+
+**Milestone Stepper**
+- Displays sequential milestones (2–5) defined at trade creation.
+- Each milestone has a status: Pending → In Progress → Awaiting Confirmation → Completed.
+- Sequential enforcement: Milestone N must be fully completed before Milestone N+1 becomes active.
+- Dual-confirmation: both parties must independently mark a milestone complete before it advances.
+- Mark Complete action is blocked if an open dispute exists on that milestone.
+- When all milestones reach Completed status, the trade is automatically marked Completed and the Trust Score Engine recalculates scores for both parties.
+- Milestone titles are clamped to 1 line with ellipsis overflow within the stepper component; full title is visible in the expanded milestone detail view.
+
+**Evidence Journal**
+- Drag-and-drop interface for submitting files or links as evidence, with a progress bar displayed during upload.
+- Each submission is scoped to a specific milestone via a Milestone Scope selector dropdown.
+- Uploaded files stored in Supabase Storage; accessible only to the two trade parties via time-limited signed URLs.
+- Evidence entries are listed chronologically per milestone, showing submitter mononym, file name or link, and submission timestamp.
+- File names that exceed the display width are truncated with ellipsis; full file name is shown on hover via tooltip.
+
+**Chat**
+- Real-time messaging between the two trade parties using Supabase Realtime and Presence.
+- Features: typing indicators (Partner is typing...), read receipts (Seen), 6-emoji reactions on messages.
+- Message history persisted in the database.
+- Messages are paginated; older messages load on scroll-up.
+- Message bubbles wrap long text content within the chat container width; no horizontal overflow permitted. URLs within messages are wrapped using word-break rules.
+
+**Dispute Panel**
+- User may open a dispute scoped to a specific milestone.
+- Opening a dispute requires a mandatory reason field (minimum 20 characters).
+- While a dispute is open on a milestone, the Mark Complete action for that milestone is blocked for both parties.
+- Dispute states: Open → Under Review → Resolved.
+- A dedicated, formatted comment thread is available within the dispute for resolution notes; both trade parties may post comments.
+- If a dispute remains in Open or Under Review state for more than 7 days, an Under Review escalation banner is displayed prominently on the trade detail page.
+- Dispute resolution is manual (admin or mutual agreement); resolution unblocks the milestone.
+- Resolved disputes display a read-only summary with the resolution note.
+- All text within the dispute panel (reason field, comment thread, resolution note) wraps within its container; no overflow permitted.
+
+**Backend Requirements for Trade Hub**
+- The trades table has RLS policies ensuring only the two trade parties (proposer_user_id, recipient_user_id) can read or write the trade record.
+- Milestone state transitions are enforced by a Supabase Edge Function or database trigger: the function validates sequential order (milestone N-1 must be Completed before milestone N can move to In Progress), validates dual-confirmation (both party_a_confirmed and party_b_confirmed flags must be true before a milestone advances to Completed), and validates that no open dispute exists on the milestone before allowing a Mark Complete action.
+- When all milestones on a trade reach Completed status, a database trigger automatically updates the trade status to Completed and invokes the Trust Score Engine recalculation function for both parties simultaneously.
+- The Trust Score Engine recalculation function: reads the current counts of completed trades, verified proofs, unverified proofs, and endorsements for the user; computes the new score using the formula; inserts a row into trust_score_history with new_score, delta, event_type, and timestamp; updates the current_trust_score field on the user record.
+- Evidence file uploads use Supabase Storage with a dedicated bucket (e.g., trade-evidence); the bucket has RLS policies restricting access to the two trade parties of the relevant trade. Signed URLs are generated server-side with a configurable expiry (e.g., 1 hour) and returned to the client on each read request.
+- The chat messages table has RLS policies restricting read and write to the two trade parties. Supabase Realtime is configured to broadcast INSERT events on the messages table to a channel scoped to the trade ID. Presence is used to track which party is currently viewing the chat, enabling typing indicators and read receipts. Read receipts are updated by a backend call when the recipient's Presence indicates they are active in the chat and a new message arrives.
+- Disputes are stored in a disputes table with columns: id, trade_id, milestone_id, opened_by_user_id, reason, status, opened_at, resolved_at, resolution_note. A scheduled Supabase function or cron job checks for disputes where status IN (Open, Under Review) and opened_at < NOW() - INTERVAL 7 days, and sets a flag (escalated: true) on those rows; the frontend reads this flag to display the escalation banner.
+- The Dispute Panel is loaded via code-splitting (lazy loading) as a separate chunk within the /trades/[id] route.
+
+---
+
+#### /analytics — Analytics Page
+
+- **Real Data Only:** Charts and metrics only render when real data is present. If no data exists, displays No data available — no illustrative or placeholder charts are shown.
+- **Date Range Filter:** User may filter analytics data by a custom date range (default: last 30 days).
+- **Charts displayed when data is available:**
+  - Trust Score trend over time (line chart sourced from trust_score_history).
+  - Skill Category breakdown (pie or bar chart of skill tags across completed trades, grouped by domain category).
+  - Hourly Exchange Balance (bar chart of hours offered vs. hours received).
+- **Summary Metrics Panel:** Displays aggregate figures: Total Trades Completed, Total Proofs Added, Total Endorsements Received, Current Trust Score.
+- Chart axis labels, legend labels, and tooltip text are constrained to their allocated space; long skill tag names in chart legends are truncated with ellipsis and shown in full on hover.
+- **Custom Skill Growth Telemetry Tracks:**
+  - Users may define and manage custom telemetry tracks to monitor specific skill growth vectors.
+  - Each track is defined by: a Track Name, one or more target Skill Tags (selected via the structured tagging system with auto-suggestions and domain grouping) to monitor, and a Metric Type (e.g., trade frequency, proof additions, or hours exchanged for the selected skill tags).
+  - Configured tracks are displayed as individual chart panels on the Analytics page, each rendering a time-series line chart scoped to the track's defined skill tags and metric type.
+  - Users may add, edit, or delete their own custom tracks. A maximum of 5 custom tracks may be active simultaneously.
+  - Custom track panels respect the active Date Range Filter.
+  - If a custom track has no data within the selected date range, the panel displays No data available for this track.
+  - Track Name and Skill Tag labels within track panels are truncated with ellipsis if they exceed the panel width; full values shown on hover.
+- **Report Export:**
+  - **Standard Data Export:** User may export their activity data as PDF, CSV, or JSON. Export respects the active date range filter. If no data exists in the selected range, the export file is generated with headers only and a no data notice.
+  - **High-Fidelity Professional Report Export:** User may export a professional report that includes rendered chart visualizations (Trust Score trend, Skill Category breakdown, Hourly Exchange Balance, and any active custom telemetry track charts) alongside summary metrics. The report is exported as a PDF document with a structured layout: cover section displaying the user's mononym, export date range, and current Trust Score; followed by each chart rendered at high resolution; followed by the Summary Metrics Panel. The export respects the active date range filter. Charts with no data in the selected range are omitted from the professional report with a note indicating no data for that section.
+
+**Backend Requirements for Analytics**
+- All analytics queries are scoped to the authenticated user via RLS.
+- The Trust Score trend chart queries trust_score_history WHERE user_id = auth.uid() AND timestamp BETWEEN [start_date] AND [end_date], ordered by timestamp ascending.
+- The Skill Category breakdown queries completed trades joined with their associated skill tags, grouped by domain, filtered by trade completion date within the selected range.
+- The Hourly Exchange Balance queries trades WHERE (proposer_user_id = auth.uid() OR recipient_user_id = auth.uid()) AND status = Completed AND completed_at BETWEEN [start_date] AND [end_date]; hours_offered and hours_received are summed separately.
+- Custom telemetry track data is computed by querying trades and proofs filtered by the track's selected skill tags and metric type, scoped to the authenticated user and the active date range.
+- Custom track configurations are stored in a telemetry_tracks table with columns: id, user_id, track_name, skill_tags (array), metric_type, created_at; RLS restricts access to the owning user.
+- The Analytics page and all its chart panels and custom telemetry track panels are loaded via code-splitting (lazy loading).
+- PDF and CSV/JSON export for standard data export is generated client-side from the data already loaded in the frontend.
+- The high-fidelity professional report PDF is generated client-side by capturing rendered chart canvases at high resolution and composing them into a structured PDF document.
+
+---
+
+#### /workspaces — Workspace Management
+
+- Lists all workspaces the user belongs to, showing workspace name, user's role, and member count.
+- Workspace name is clamped to 1 line with ellipsis overflow in the list; full name is visible on the individual workspace page.
+- User may create a new workspace (becomes Owner) by providing a workspace name and optional description.
+- Professional Empty State shown when user has no workspaces.
+
+#### /workspaces/[id] — Individual Workspace
+
+- **Roles:** Owner, Admin, Member.
+- **Permissions:**
+  - Owner: full control including workspace deletion, role management, and all Admin capabilities.
+  - Admin: manage members (invite, remove, change roles up to Admin), manage listings, manage trade pipelines, and generate invitation links.
+  - Member: view and contribute to active trades; view shared listings.
+- **Members Tab:** Lists all workspace members with their role and join date. Owner and Admin may change member roles or remove members. Removing a member revokes their access immediately. Member mononyms are truncated with ellipsis if they exceed the column width; full value shown on hover.
+- **Shared Trade Pipeline — List View & Kanban View:**
+  - The Shared Trade Pipeline supports two display modes: List View (default) and Kanban View. Users may toggle between the two modes; the selected mode persists per workspace per user session.
+  - **List View:** A unified tabular/list view of all trades being handled by the workspace team, showing trade status, assigned members, and last activity timestamp. Consistent with the existing trade pipeline behavior. All cell content wraps or truncates within column boundaries; no horizontal overflow permitted.
+  - **Kanban View:** A board-style visualization designed for managing high-volume service exchange flows.
+    - Columns correspond to trade lifecycle stages: Proposed, Active, Disputed, Completed, Declined.
+    - Each trade is represented as a card within its corresponding column. Each card displays: counterparty mononym, skill tags involved (with domain labels), current milestone progress (e.g., 2/4), assigned workspace member(s), and last activity timestamp.
+    - **Text overflow rules for Kanban cards:** Counterparty mononym is truncated with ellipsis at 1 line. Skill tag chips wrap to a maximum of 2 rows; excess tags are collapsed behind a +N more indicator. Milestone progress and timestamp are formatted to fixed-width strings that fit within the card footer.
+    - Cards within the Active column are further grouped or visually distinguished by current milestone status (In Progress, Awaiting Confirmation).
+    - Workspace members with Admin or Owner role may drag and drop trade cards between the Proposed and Active columns to accept or re-prioritize trades. All other column transitions (e.g., Active → Completed) are governed by the trade lifecycle rules and cannot be manually overridden via drag-and-drop.
+    - Clicking a trade card in Kanban View navigates to /trades/[id].
+    - The Kanban board updates in real time via Supabase Realtime; new trades, status changes, and milestone updates are reflected without page refresh.
+    - When the workspace has no trades, the Kanban View displays a Professional Empty State within the board area.
+- **Shared Listings:** Workspace listings are visible to all members. Admins and Owner may create, edit, or deactivate workspace listings.
+- **Invitation Links:** Owner or Admin generates an invitation link. Links expire after 7 days. Expired links are rejected with an appropriate error message. Active invitation links are listed with their expiry date; Owner or Admin may revoke a link before expiry.
+- **Workspace Settings (Owner only):** Edit workspace name and description. Delete workspace — requires confirmation dialog; deletion removes all associated workspace data and revokes all member access.
+
+**Backend Requirements for Workspaces**
+- The workspaces table has RLS policies: members can read workspace records they belong to (via workspace_members join); only the Owner can update or delete the workspace record.
+- The workspace_members table stores: workspace_id, user_id, role (Owner/Admin/Member), joined_at. RLS restricts read to members of the same workspace; INSERT is permitted for Owner and Admin (via invitation flow); UPDATE of role is permitted for Owner (any role) and Admin (up to Admin); DELETE (member removal) is permitted for Owner and Admin.
+- Invitation links are stored in a workspace_invitations table with columns: id, workspace_id, created_by_user_id, token (UUID), expires_at (created_at + 7 days), revoked (boolean). When a user follows an invitation link, the backend validates: token exists, revoked = false, expires_at > NOW(); on success, inserts a row into workspace_members with role = Member.
+- Workspace deletion is performed by a Supabase Edge Function or database cascade: deletes all workspace_members rows, workspace_invitations rows, workspace_listings rows, and the workspace record itself; all active sessions for workspace-scoped contexts are invalidated.
+- The Kanban board subscribes to a Supabase Realtime channel scoped to the workspace_id, listening for INSERT and UPDATE events on the trades table where workspace_id matches; on event receipt, the board updates the relevant card's column and content without page refresh.
+- Drag-and-drop from Proposed to Active on the Kanban board calls the same trade acceptance backend function used in the Trade Hub; the function validates the caller's role (must be Admin or Owner) before executing the status transition.
+- The workspace_id field on trades is set when a trade is created or accepted within a workspace context; trades without a workspace_id are personal trades and do not appear on any workspace Kanban board.
+- The /workspaces and /workspaces/[id] pages are loaded via code-splitting (lazy loading).
+
+---
+
+#### /settings — User Settings
+
+- **Profile Section:**
+  - Update mononym.
+  - Update email address (triggers re-verification flow via Supabase Auth).
+  - Update DNA type or Custom DNA label and tags.
+- **Theme Engine:**
+  - Two themes are available: Light Mode and Dark Mode (Neubrutalism Dark). No other theme options exist.
+  - Light Mode: Stark White (#FFFFFF) base.
+  - Dark Mode: Neubrutalism Dark theme.
+    - Base background: Obsidian Black (#050505).
+    - **Gold-Tinted Elevation Levels:** Surface layers are differentiated using gold-tinted elevation tokens rather than standard grey-scale shadows. Three elevation levels are defined:
+      - Elevation 1 (base cards, panels): a very subtle warm gold tint overlay on the base background (e.g., approximately #0D0B08), with a 1px solid gold-tinted border (#2A2318).
+      - Elevation 2 (modals, dropdowns, popovers): a more pronounced warm gold tint (e.g., approximately #1A1508), with a 1px solid border (#3D3420) and a diffuse gold-tinted box shadow.
+      - Elevation 3 (toasts, top-layer overlays): the highest contrast gold tint surface (e.g., approximately #261E0A), with a 1px solid border (#5C4E28) and a stronger gold-tinted box shadow.
+    - **High-Contrast Typography:** All body and UI text in Dark Mode uses pure white (#FFFFFF) or near-white (#F5F0E8) for primary text, and a warm off-white (#C8B99A) for secondary/muted text. Heading typography uses a bold weight with increased letter-spacing to reinforce the Neubrutalism aesthetic. Interactive elements (buttons, links) use a gold accent color (#C9A84C) for labels and borders in their default state, shifting to a brighter gold (#F0C040) on hover/focus.
+    - Neubrutalism Dark styling is applied globally via CSS variables with no page reload when switching to Dark Mode.
+  - Theme is applied globally via CSS variables with no page reload.
+  - The theme selector in Settings exposes exactly two options: Light and Dark. The previously listed themes — Neumorphism Light, Neumorphism Dark, Material Dark, and Neubrutalism Light — are permanently removed and must not appear anywhere in the application.
+- **Language / i18n:** Select preferred language. All UI strings and Knowledge Base content update instantly.
+- **Session Management:**
+  - View all active sessions with device/browser label and last active timestamp.
+  - Sign Out All action invalidates all active sessions immediately.
+- **Password Reset:** Uses CSPRNG tokens with 32-byte entropy, hashed with SHA-256 before storage. Triggering a reset invalidates all active sessions. Password change is logged to the Security Audit Log.
+- All settings labels, descriptions, and input fields wrap correctly within the settings layout; no text overflow permitted.
+
+---
+
+## 4. Business Rules & Logic
+
+### Trust Score Engine v3.4.0
+- Calculated and recalculated by a backend function upon relevant events (trade completion, proof verification, endorsement received).
+- Formula:
+  - Trust Score = (Trades Completed × 10) + (Verified Proofs × 8) + (Unverified Proofs × 3) + (Endorsements × 2)
+- Every recalculation logs a record to the trust_score_history table containing: user ID, new score, delta (e.g., +10), event type, and timestamp.
+- Score history is available for display in Analytics.
+- Both parties in a completed trade receive a Trust Score recalculation event simultaneously upon trade completion.
+
+### Trade Lifecycle
+- A trade begins in Proposed state when a proposer submits a trade proposal.
+- The recipient may Accept (moves trade to Active) or Decline (moves trade to Declined).
+- An Active trade progresses through milestones sequentially.
+- When all milestones are Completed, the trade moves to Completed state and Trust Score recalculation is triggered for both parties.
+- A Declined trade is immutable; no further actions are possible.
+
+### Listing Deletion Rules
+- A user may permanently delete their own listings via a confirmation dialog.
+- A listing that is currently referenced by a trade in Proposed or Active state cannot be deleted; the delete action is blocked with an inline message explaining that the listing is linked to an active trade.
+- Once a trade reaches a terminal state (Completed or Declined), the associated listing becomes eligible for deletion.
+- Permanent deletion removes the listing record entirely and cannot be undone.
+
+### Theme Availability
+- The application supports exactly two themes: Light Mode and Neubrutalism Dark Mode.
+- The themes Neumorphism Light, Neumorphism Dark, Material Dark, and Neubrutalism Light are permanently removed from the system. No references to these themes may exist in the UI, settings, database, or CSS.
+
+### Global Text Overflow Prevention
+- All text elements across the entire application must be constrained to their layout containers. The following rules apply globally:
+  - Single-line text fields (headings, labels, mononyms, status badges, timestamps): truncate with ellipsis (text-overflow: ellipsis) when content exceeds the container width.
+  - Multi-line text blocks (descriptions, messages, notes): use line-clamp where a maximum line count is defined; otherwise wrap with word-break rules that prevent horizontal overflow.
+  - URLs and long unbreakable strings: apply word-break: break-all or overflow-wrap: anywhere to prevent horizontal scroll.
+  - Chip/tag collections: wrap to a defined maximum number of rows; excess items are collapsed behind a +N more indicator.
+  - Table and list cells: all cell content wraps or truncates within column boundaries; no cell may cause horizontal scroll on its row.
+  - Tooltips: full content is exposed via tooltip on hover for any element that truncates or collapses content.
+  - No section, page, card, modal, panel, or component anywhere in the application may exhibit unintended horizontal text overflow.
+
+### Row Level Security (RLS)
+- Every Supabase table has RLS enabled.
+- Users may only read/write their own records, shared trade records (scoped to both parties), or workspace records they have role-based access to.
+- A user cannot see a trade unless they are a direct participant or a member of the associated workspace.
+
+### Security Audit Log
+- Sensitive events are logged to a dedicated audit log table: Password Change, Failed Login attempts, and Unauthorized Access attempts.
+- Log entries include: user ID (if resolvable), event type, timestamp, and relevant metadata.
+
+### Session Invalidation
+- All active sessions are invalidated upon: password reset, email change, or manual Sign Out All action.
+
+### Signed URLs for Evidence
+- Files uploaded to Supabase Storage as trade evidence are only accessible via time-limited signed URLs.
+- Signed URLs are scoped to the two parties in the relevant trade.
+
+### Self-Trade Block
+- The system prevents a user from proposing a trade with themselves at the API/backend level.
+
+### Unverified User Redirect
+- Any unverified user attempting to access a protected route is redirected to /verify-email.
+
+### Dispute Block & Escalation
+- While a dispute is open on a milestone, neither party may mark that milestone as complete.
+- If a dispute remains unresolved for more than 7 days, an Under Review escalation banner is shown on the trade detail page.
+
+### Milestone Sequential Enforcement
+- Milestone N must reach Completed status before Milestone N+1 becomes active.
+
+### Workspace Invitation Expiry
+- Invitation links expire exactly 7 days after generation. Expired links return an error and cannot be used to join.
+
+### Mononym Support
+- The display name field accepts a single name with no surname requirement throughout the entire system.
+
+### Real-time Performance
+- All real-time events (Activity Feed, Chat, KPI updates, Workspace Kanban board) use Supabase Broadcast/Presence targeting sub-100ms latency.
+
+### Notification State
+- Unread badge counts on the sidebar/bottom nav for Trades are incremented when: a new trade proposal is received, a milestone is marked complete by the counterparty, a dispute is opened or updated, or a workspace invitation is accepted.
+- Badge counts are cleared when the user visits the relevant section.
+
+### Code-Splitting for Non-Critical Modules
+- All non-critical protocol modules are loaded via code-splitting (lazy loading) to optimize initial load performance.
+- Non-critical modules include: /analytics (including all chart panels and custom telemetry track panels), /proofchain, /workspaces and /workspaces/[id], /knowledge-base, and the Dispute Panel within /trades/[id].
+- Critical modules loaded eagerly (not split): /login, /register, /verify-email, /dashboard, and the core Trade Hub shell at /trades and /trades/[id] (excluding the Dispute Panel).
+- Each lazily loaded module displays a lightweight loading indicator while the module chunk is being fetched.
+- Code-splitting boundaries are enforced at the route level; sub-components within a lazy-loaded route are bundled within that route's chunk.
+
+### Custom Telemetry Track Rules
+- A user may define up to 5 active custom telemetry tracks simultaneously.
+- Each track requires a Track Name, at least one Skill Tag, and a Metric Type.
+- Track data is computed from the user's own trade and proof history scoped to the selected skill tags.
+- Custom track data is stored per user and persists across sessions.
+- Deleting a custom track removes its panel from the Analytics page and its stored configuration; historical source data is not affected.
+
+### High-Fidelity Professional Report Export Rules
+- The professional report export is only available when at least one chart has renderable data within the selected date range.
+- Charts with no data in the selected range are omitted from the report with a per-section no data note.
+- The report PDF layout is fixed: cover section → Trust Score trend chart → Skill Category breakdown chart → Hourly Exchange Balance chart → active custom telemetry track charts (in user-defined order) → Summary Metrics Panel.
+- The export is triggered from the Analytics page and respects the active date range filter at the moment of export.
+
+### Structured Skill Tagging Rules
+- The predefined tag library is the authoritative source for auto-suggestions; it is read-only and cannot be modified by users.
+- Auto-suggestions are triggered after the user types at least 1 character in a skill tag input field.
+- A maximum of 10 skill tags may be added per proof entry.
+- Custom (free-text) tags that do not match any predefined tag are stored as-is and labeled with a Custom domain indicator.
+- Domain-based grouping is applied consistently wherever skill tags are displayed or filtered across the platform.
+
+### Kanban Trade Pipeline Rules
+- The Kanban board is scoped to the individual workspace; it displays only trades associated with that workspace.
+- Real-time updates to trade status and milestone progress are reflected on the Kanban board without page refresh via Supabase Realtime.
+- Drag-and-drop between Proposed and Active columns is permitted only for Admin and Owner roles; Member role users have a read-only view of the Kanban board.
+- Dragging a card from Proposed to Active is equivalent to accepting the trade proposal and follows the same trade lifecycle transition rules.
+- All other column transitions are system-driven and cannot be triggered by drag-and-drop.
+- The Kanban board view state (column scroll position, selected filters) is not persisted across sessions.
+
+### Neubrutalism Dark Theme Rules
+- Gold-tinted elevation tokens (Elevation 1, 2, 3) are applied consistently to all surface layers across the application when Dark Mode is active.
+- High-contrast typography tokens (primary white, secondary warm off-white, gold accent) are applied globally in Dark Mode via CSS variables.
+- The gold accent color (#C9A84C) is used exclusively for interactive element labels, borders, and focus rings in Dark Mode; it must not be used as a background fill for large surface areas.
+- All elevation and typography CSS variables are toggled atomically with the Dark Mode theme switch; no partial application is permitted.
+
+### Knowledge Base Content & i18n Rules
+- All Knowledge Base article content (headings, body text, code-style references, table content) is stored as i18n-keyed strings; no hardcoded English strings may appear in the Knowledge Base rendering layer.
+- Switching language in Settings triggers an immediate re-render of all Knowledge Base content in the selected language without page reload.
+- The Knowledge Base search index is rebuilt or re-queried in the active language when the language changes.
+- Article content is read-only; no user can create, edit, or delete Knowledge Base articles via the UI.
+- The sidebar navigation, breadcrumb trail, and search results all update to the selected language simultaneously with the article content.
+
+### Frontend–Backend Integration Correctness Rules
+- Every protected route must validate the authenticated session on mount via Supabase Auth; if the session is absent or expired, the user is redirected to /login.
+- Every Supabase Realtime subscription must be established after session validation and torn down on component unmount.
+- All data-fetching hooks must handle loading, success, and error states explicitly; no component may render in an indeterminate state without a loading indicator or error boundary.
+- All form submissions that write to the database must display an inline loading state on the submit button and an inline success or error message upon completion.
+- All Supabase Edge Functions and database triggers must return structured error responses; the frontend must surface these errors as inline messages rather than silent failures.
+- All file upload operations must validate file type and size client-side before initiating the Supabase Storage upload; server-side storage policies must enforce the same constraints.
+
+---
+
+## 5. Exceptions & Edge Cases
+
+| Scenario | Handling |
+|---|---|
+| User attempts to propose a trade with themselves | Blocked at API level; error message displayed |
+| User accesses protected route without email verification | Redirected to /verify-email |
+| User attempts to pin a 4th proof | Prompt to replace an existing pinned proof |
+| Mark Complete clicked while dispute is open | Action blocked; dispute status message shown |
+| Dispute unresolved for more than 7 days | Under Review escalation banner displayed on trade detail |
+| Analytics page with zero data | Displays No data available; no placeholder charts |
+| Workspace invitation link used after 7 days | Link rejected; expiry error message shown |
+| Evidence file accessed by non-trade party | Access denied; signed URL is scoped to trade parties only |
+| Password reset triggered | All active sessions invalidated immediately |
+| Sign Out All triggered | All active sessions invalidated immediately |
+| Trade submitted with fewer than 2 milestones | Blocked; minimum of 2 milestones required |
+| Trade submitted with more than 5 milestones | Blocked; maximum of 5 milestones enforced |
+| No listings in SkillSwap Market | Professional Empty State shown |
+| No proofs in ProofChain | Professional Empty State shown |
+| No trades in Trade Hub | Professional Empty State shown |
+| No workspaces | Professional Empty State shown |
+| Failed login attempt | Event logged to Security Audit Log |
+| Unauthorized access attempt | Event logged to Security Audit Log |
+| Evidence upload in progress | Progress bar displayed; upload blocked from cancellation mid-stream |
+| Trade proposal declined by recipient | Trade moves to Declined state; proposer sees declined status; no further actions possible |
+| Member removed from workspace | Access revoked immediately; active sessions for that workspace context are invalidated |
+| Workspace invitation link revoked before expiry | Link immediately invalidated; any attempt to use it returns an expiry/invalid error |
+| Workspace deleted by Owner | All workspace data removed; all member access revoked immediately |
+| User updates email address | Re-verification email sent; user must verify new email before it takes effect |
+| Dispute opened without meeting minimum reason length | Form submission blocked; inline validation error shown |
+| All milestones completed | Trade automatically moves to Completed; Trust Score recalculation triggered for both parties |
+| User attempts to edit or delete a Locked (Verified) proof | Edit and delete actions are hidden/disabled; read-only view displayed |
+| Chat message history exceeds page length | Older messages load on scroll-up via pagination |
+| Export triggered with no data in selected date range | Standard export file generated with headers only and a no data notice; professional report export is blocked with an inline message indicating no data available for export |
+| Lazy-loaded module chunk fails to fetch | Loading indicator replaced with an inline error and a retry action |
+| User attempts to add a 6th custom telemetry track | Action blocked; inline message shown indicating the 5-track maximum has been reached |
+| Custom telemetry track has no data in selected date range | Track panel displays No data available for this track; panel is omitted from professional report export with a per-section note |
+| Professional report export triggered with all charts having no data | Export action blocked; inline message shown indicating no data available for the selected date range |
+| Custom telemetry track deleted | Track panel removed from Analytics page; stored track configuration deleted; source data unaffected |
+| User adds more than 10 skill tags to a single proof | Tag input blocks additional entries; inline message shown indicating the 10-tag maximum has been reached |
+| User types a skill tag that matches no predefined tag | Tag accepted as a free-text custom tag and labeled with a Custom domain indicator |
+| Kanban board drag-and-drop attempted by Member role user | Drag interaction disabled; board is read-only for Member role |
+| Kanban card dragged to a column other than Active from Proposed | Action blocked; only Proposed → Active drag-and-drop is permitted; all other transitions are system-driven |
+| Workspace Kanban board has no trades | Professional Empty State displayed within the board area |
+| Kanban board real-time update fails | Board displays a stale data warning with a manual refresh action |
+| Dark Mode active and elevation token not applied to a surface | Surface falls back to Elevation 1 token as the default; no unstyled surfaces permitted in Dark Mode |
+| User attempts to delete a listing linked to a Proposed or Active trade | Delete action blocked; inline message shown indicating the listing is linked to an active trade |
+| User permanently deletes a listing | Confirmation dialog shown; on confirmation, listing record is permanently removed and cannot be recovered |
+| User selects a removed theme (Neumorphism Light, Neumorphism Dark, Material Dark, or Neubrutalism Light) | These options do not exist in the UI; no selection or fallback handling required |
+| Any text content exceeds its container width | Text truncates with ellipsis (single-line) or wraps with line-clamp (multi-line); full content exposed via tooltip; no horizontal overflow occurs |
+| Long unbreakable string (e.g., URL) appears in a text container | word-break: break-all or overflow-wrap: anywhere applied; no horizontal scroll triggered |
+| Chip/tag collection exceeds maximum display rows | Excess tags collapsed behind a +N more indicator; no overflow outside the card or container |
+| Knowledge Base search returns no results | Empty state message displayed in the search results area: No articles found for your search |
+| Knowledge Base article fails to load | Inline error message displayed in the reading pane with a retry action |
+| Language changed while Knowledge Base article is open | Article content and sidebar navigation re-render instantly in the selected language; reading position is preserved |
+| Supabase Realtime subscription fails to connect | Affected component displays a connection error indicator with a manual refresh action; no silent failure |
+| Form submission fails due to a backend error | Inline error message displayed beneath the form with the error detail returned by the backend; submit button re-enabled |
+| File upload exceeds size or type constraints | Client-side validation blocks the upload before it starts; inline error message shown specifying the constraint violated |
+| Protected route accessed with expired session | User redirected to /login; session expiry message displayed |
+| Dashboard Realtime subscription delivers a duplicate event | Frontend deduplicates events by event ID before updating the Activity Feed or KPI counters |
+
+---
+
+## 6. Acceptance Criteria
+
+- The landing page renders publicly with Hero, Features, How It Works, and Knowledge Base teaser sections, and correct links to /register, /login, and /knowledge-base.
+- A user can register with a mononym, select or build a DNA type, verify their email, and access the dashboard.
+- Unverified users are redirected to /verify-email when accessing protected routes; the resend verification action functions correctly.
+- The dashboard KPI strip displays live count-up animations reflecting real data via Supabase Realtime; counters update without page refresh when underlying data changes.
+- The Activity Feed updates in real time without page refresh; new events are prepended to the feed as they are inserted into the activity_feed table.
+- Dashboard Realtime subscriptions are established after session validation and torn down on unmount; no duplicate events are delivered.
+- A user can add a proof with skill tags (selected via the structured tagging system with auto-suggestions and domain grouping) and value, edit or delete unlocked proofs, pin up to 3 proofs, and export selected proofs to PDF via bulk actions.
+- Skill tag auto-suggestions appear after typing at least 1 character and are grouped by domain in the dropdown.
+- Custom free-text tags not matching any predefined tag are accepted and displayed with a Custom domain label.
+- A maximum of 10 skill tags may be added per proof; the input blocks additional entries beyond this limit with an inline message.
+- Domain category labels are displayed alongside skill tags on proof cards and wherever tags are rendered across the platform.
+- Locked (Verified) proofs cannot be edited or deleted.
+- Proof file uploads are stored in Supabase Storage and accessed via signed URLs scoped to the authenticated user; the locked status is set by a backend trigger upon trade completion.
+- A user can browse the SkillSwap Market, filter by keyword, skill tags (via domain-grouped tag picker), and hours range, view listing details including the lister's pinned proofs, and propose a multi-milestone trade.
+- A user cannot propose a trade with themselves; the block is enforced at the backend level.
+- A trade recipient can accept or decline a trade proposal; accepted proposals create an active trade record and both parties are linked to /trades/[id].
+- A user can edit, deactivate, and permanently delete their own listings from the Market page or listing card.
+- Permanently deleting a listing requires confirmation; the listing record is fully removed on confirmation.
+- Deleting a listing linked to a Proposed or Active trade is blocked with an inline message; deletion becomes available once the trade reaches a terminal state.
+- The Trade Hub lists all trades with correct status tabs and filters.
+- The Trade Hub enforces sequential milestone progression via backend validation; Milestone N must be completed before N+1 activates.
+- Dual-confirmation is enforced at the backend; neither party can advance a milestone unilaterally.
+- When all milestones are completed, a backend trigger automatically marks the trade Completed and triggers Trust Score recalculation for both parties simultaneously.
+- Evidence files are uploadable via drag-and-drop with a progress bar, scoped to a milestone, listed chronologically, and accessible only via signed URLs to the two trade parties.
+- Real-time chat functions with typing indicators, read receipts, 6-emoji reactions, and paginated message history; Supabase Realtime and Presence are correctly configured and torn down on unmount.
+- A dispute on a milestone requires a minimum-length reason, blocks the Mark Complete action for both parties at the backend level, and supports a comment thread.
+- Disputes unresolved for more than 7 days display an Under Review escalation banner; the escalated flag is set by a scheduled backend process.
+- Resolved disputes display a read-only summary.
+- The Trust Score recalculates and logs a delta and event type to trust_score_history upon each qualifying event.
+- Analytics displays Trust Score trend, Skill Category breakdown (grouped by domain), Hourly Exchange Balance, and summary metrics when data exists; shows No data available otherwise.
+- All analytics queries are correctly scoped to the authenticated user via RLS and the active date range filter.
+- Analytics date range filter correctly scopes all charts, custom telemetry track panels, and both export types.
+- Analytics data is exportable as PDF, CSV, or JSON via standard data export.
+- The high-fidelity professional report export generates a structured PDF containing rendered chart visualizations and summary metrics respecting the active date range filter; charts with no data are omitted with a per-section note; export is blocked when all charts have no data.
+- A user can create, edit, and delete custom telemetry tracks using the structured skill tagging system; each track renders as a time-series line chart panel on the Analytics page scoped to the defined skill tags and metric type.
+- Custom telemetry track configurations persist across sessions via the telemetry_tracks table.
+- A user cannot create more than 5 active custom telemetry tracks simultaneously.
+- Custom telemetry track panels respect the active date range filter and display No data available when no data exists for the track in the selected range.
+- Non-critical modules (/analytics, /proofchain, /workspaces, /workspaces/[id], /knowledge-base, Dispute Panel) are loaded via code-splitting with a loading indicator; critical modules (/login, /register, /verify-email, /dashboard, Trade Hub shell) are loaded eagerly.
+- A failed lazy-loaded module chunk fetch displays an inline error with a retry action.
+- The Settings theme selector exposes exactly two options: Light and Dark. The themes Neumorphism Light, Neumorphism Dark, Material Dark, and Neubrutalism Light do not appear anywhere in the application.
+- Light Mode (Stark White #FFFFFF) applies globally via CSS variable toggle with no page reload.
+- Dark Mode applies the Neubrutalism Dark theme: Obsidian Black (#050505) base, gold-tinted elevation levels (Elevation 1, 2, 3) applied to all surface layers, and high-contrast typography (primary white #FFFFFF, secondary warm off-white #C8B99A, gold accent #C9A84C for interactive elements brightening to #F0C040 on hover/focus). Theme applies globally via CSS variables with no page reload.
+- All three elevation levels render with the correct gold-tinted background, border color, and box shadow as specified; no unstyled surfaces appear in Dark Mode.
+- Language selection updates all UI strings and Knowledge Base content instantly without page reload.
+- The Knowledge Base renders all three sections (Getting Started, Trust Algorithm, Use Cases) with their full article content as specified; all articles are readable and correctly structured.
+- The Knowledge Base sidebar navigation, breadcrumb trail, and search bar function correctly; search returns matching articles with title and excerpt; clicking a result navigates to the correct article.
+- All Knowledge Base article content re-renders instantly in the selected language when the language is changed in Settings.
+- User can update mononym, email (with re-verification), and DNA type from Settings.
+- Password reset and Sign Out All invalidate all active sessions; password changes are logged to the Security Audit Log.
+- All active sessions are visible in Settings with device label and last active timestamp.
+- Workspace creation, member invitation, role management, and member removal function correctly per RBAC rules; all operations are enforced by RLS policies.
+- Workspace invitation links expire after 7 days and are rejected thereafter; active links can be revoked by Owner or Admin.
+- Workspace deletion removes all associated data and revokes all member access via cascade.
+- RBAC is enforced: Owners have full control, Admins manage members and listings, Members can only view and contribute.
+- The Workspace Shared Trade Pipeline supports toggling between List View and Kanban View; the selected mode persists per workspace per user session.
+- The Kanban board displays trade cards in columns corresponding to trade lifecycle stages (Proposed, Active, Disputed, Completed, Declined); each card shows counterparty mononym, skill tags with domain labels, milestone progress, assigned members, and last activity timestamp.
+- Admin and Owner roles may drag trade cards from Proposed to Active on the Kanban board, triggering the trade acceptance lifecycle transition via the same backend function used in the Trade Hub; Member role users have a read-only Kanban board.
+- Drag-and-drop to columns other than Active (from Proposed) is blocked; all other column transitions are system-driven.
+- The Kanban board updates in real time via Supabase Realtime without page refresh; the Realtime subscription is established on mount and torn down on unmount.
+- When the workspace has no trades, the Kanban board displays a Professional Empty State.
+- All Supabase tables have RLS enabled; users cannot access data outside their permissions.
+- Every protected route validates the authenticated session on mount and redirects to /login if the session is absent or expired.
+- Every Supabase Realtime subscription is established after session validation and torn down on component unmount.
+- All data-fetching hooks handle loading, success, and error states explicitly; no component renders in an indeterminate state without a loading indicator or error boundary.
+- All form submissions display an inline loading state on the submit button and an inline success or error message upon completion.
+- All file upload operations validate file type and size client-side before initiating the upload; server-side storage policies enforce the same constraints.
+- Failed logins, password changes, and unauthorized access attempts are logged to the Security Audit Log.
+- Unread badge counts on sidebar/bottom nav increment and clear correctly.
+- No text element anywhere in the application overflows its container boundary. Single-line elements truncate with ellipsis; multi-line elements wrap or clamp with line-clamp; long unbreakable strings apply word-break rules; tag collections collapse excess items behind a +N more indicator; all truncated elements expose full content via tooltip on hover.
+
+---
+
+## 7. Out of Scope (This Release)
+
+- Monetary payments or escrow functionality.
+- Native mobile applications (iOS / Android).
+- Admin dashboard for platform-level dispute resolution.
+- Automated dispute resolution logic.
+- Third-party OAuth login (e.g., Google, GitHub).
+- Email notification system (beyond verification and password reset).
+- Public user profile pages accessible by URL.
+- Endorsement submission UI (Trust Score formula includes endorsements, but the mechanism for submitting endorsements is deferred).
+- Advanced analytics (cohort analysis beyond current export scope).
+- Workspace billing or subscription tiers.
+- Account deletion flow.
+- Push notifications or in-app notification centre beyond badge counts.
+- User-editable or community-contributed additions to the predefined skill tag library.
+- Kanban board view state persistence across sessions.
+- Server-side rendering or static site generation for the Knowledge Base.
+- Knowledge Base article authoring or CMS interface.
