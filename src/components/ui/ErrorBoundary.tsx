@@ -64,14 +64,41 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 export function LoadingFallback() {
   return (
     <div style={{
+      padding: '2rem',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '4rem',
-      gap: '0.75rem',
+      flexDirection: 'column',
+      gap: '1.25rem',
+      animation: 'fadeIn 0.2s ease-out',
     }}>
-      <div className="spinner" />
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>Loading...</span>
+      {/* Header skeleton */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="skeleton-block" style={{ width: '180px', height: '28px', borderRadius: 'var(--radius-sm)' }} />
+        <div className="skeleton-block" style={{ width: '100px', height: '32px', borderRadius: 'var(--radius-sm)' }} />
+      </div>
+      {/* Cards skeleton */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} style={{
+            padding: '1.25rem',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--surface-1)',
+            border: '1px solid var(--surface-1-border)',
+          }}>
+            <div className="skeleton-block" style={{ width: '60%', height: '14px', marginBottom: '0.75rem', borderRadius: '4px' }} />
+            <div className="skeleton-block" style={{ width: '40%', height: '24px', borderRadius: '4px' }} />
+          </div>
+        ))}
+      </div>
+      {/* Content skeleton */}
+      <div style={{
+        padding: '1.5rem',
+        borderRadius: 'var(--radius-md)',
+        background: 'var(--surface-1)',
+        border: '1px solid var(--surface-1-border)',
+      }}>
+        <div className="skeleton-block" style={{ width: '140px', height: '18px', marginBottom: '1rem', borderRadius: '4px' }} />
+        <div className="skeleton-block" style={{ width: '100%', height: '200px', borderRadius: 'var(--radius-sm)' }} />
+      </div>
     </div>
   );
 }

@@ -679,7 +679,8 @@ h6 { font-size: 1rem; }
 }
 
 /* Shimmer Loading */
-.skeleton {
+.skeleton,
+.skeleton-block {
   background: linear-gradient(
     90deg,
     var(--surface-1) 25%,

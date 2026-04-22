@@ -25,13 +25,7 @@ export default function Login() {
 
     try {
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-      if (authError) {
-        await supabase.from('audit_log').insert({
-          event_type: 'failed_login',
-          metadata: { error: authError.message },
-        });
-        throw authError;
-      }
+      if (authError) throw authError;
 
       if (data.session && data.user) {
         setSession(data.session);
@@ -46,8 +40,9 @@ export default function Login() {
         if (profileData) setProfile(profileData as Profile);
         navigate('/dashboard');
       }
-    } catch {
-      setError(t('auth.login.error'));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Login failed';
+      setError(msg === 'Invalid login credentials' ? 'Invalid email or password. Please try again.' : msg);
     } finally {
       setLoading(false);
     }
