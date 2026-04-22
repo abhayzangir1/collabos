@@ -110,19 +110,7 @@ export default function Register() {
           ))}
         </div>
 
-        {error && (
-          <div style={{
-            padding: '0.75rem',
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1.5px solid var(--error)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--error)',
-            fontSize: '0.8rem',
-            marginBottom: '1rem',
-          }}>
-            {error}
-          </div>
-        )}
+
 
         {step === 1 && (
           <div style={{ animation: 'slideInRight 0.3s ease-out' }}>
@@ -161,6 +149,19 @@ export default function Register() {
                 required
               />
             </div>
+            {error && (
+              <div style={{
+                padding: '0.75rem',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1.5px solid var(--error)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--error)',
+                fontSize: '0.8rem',
+                marginBottom: '1rem',
+              }}>
+                {error}
+              </div>
+            )}
             <button
               className="neu-btn neu-btn-primary"
               style={{ width: '100%', padding: '0.75rem' }}
@@ -251,6 +252,19 @@ export default function Register() {
               </div>
             )}
 
+            {error && (
+              <div style={{
+                padding: '0.75rem',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1.5px solid var(--error)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--error)',
+                fontSize: '0.8rem',
+                marginBottom: '1rem',
+              }}>
+                {error}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button className="neu-btn neu-btn-ghost" onClick={() => setStep(1)} style={{ flex: 1 }}>
                 <ArrowLeft size={14} /> {t('auth.register.back')}
