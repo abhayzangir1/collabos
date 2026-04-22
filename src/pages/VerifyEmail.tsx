@@ -1,25 +1,30 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Mail, RefreshCw } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Mail, RefreshCw, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store';
 
 export default function VerifyEmail() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuthStore();
+  const { user, setSession, setUser, setProfile } = useAuthStore();
   
   // Try to get email securely from our strict router state or fallback to global store
-  const targetEmail = location.state?.email || user?.email;
+  const targetEmail = (location.state as any)?.email || user?.email;
   
+  const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [sent, setSent] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
   async function handleResend() {
     setLoading(true);
     setError('');
+    setSuccess(false);
     try {
       if (!targetEmail) throw new Error('No email found to resend to.');
       const { error } = await supabase.auth.resend({ type: 'signup', email: targetEmail });
@@ -29,6 +34,51 @@ export default function VerifyEmail() {
       setError(err instanceof Error ? err.message : 'Failed to resend');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (!otp || otp.length !== 6 || !targetEmail) return;
+    
+    setVerifying(true);
+    setError('');
+    
+    try {
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
+        email: targetEmail,
+        token: otp,
+        type: 'signup',
+      });
+      
+      if (verifyError) throw verifyError;
+      
+      setSuccess(true);
+      
+      if (data.session && data.user) {
+        setSession(data.session);
+        setUser(data.user);
+        
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileData) {
+          setProfile(profileData as any);
+        }
+      }
+      
+      // Delay navigation slightly to show success state
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to verify OTP');
+    } finally {
+      setVerifying(false);
     }
   }
 
@@ -100,7 +150,60 @@ export default function VerifyEmail() {
           </div>
         )}
 
-        {sent && (
+        {success && (
+          <div style={{
+            padding: '0.75rem',
+            background: 'rgba(34, 197, 94, 0.1)',
+            border: '1.5px solid var(--success)',
+            borderRadius: 'var(--radius-sm)',
+            color: 'var(--success)',
+            fontSize: '0.8rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+          }}>
+            <CheckCircle2 size={16} />
+            {t('auth.verify.success')}
+          </div>
+        )}
+
+        {!success && (
+          <form onSubmit={handleVerify}>
+            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+              <input
+                type="text"
+                className="neu-input"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                required
+                maxLength={6}
+                disabled={verifying}
+                style={{ 
+                  textAlign: 'center', 
+                  fontSize: '1.5rem', 
+                  letterSpacing: '0.5em',
+                  fontWeight: 700,
+                  padding: '1rem',
+                  fontFamily: 'var(--font-mono)'
+                }}
+              />
+            </div>
+            
+            <button
+              type="submit"
+              className="neu-btn neu-btn-primary"
+              disabled={verifying || otp.length !== 6}
+              style={{ width: '100%', padding: '0.875rem', marginBottom: '1rem', fontSize: '0.95rem' }}
+            >
+              {verifying ? <div className="spinner" style={{ width: 18, height: 18 }} /> : <>{t('auth.verify.submit')} <ArrowRight size={16} /></>}
+            </button>
+          </form>
+        )}
+
+        {sent && !success && (
           <div style={{
             padding: '0.75rem',
             background: 'rgba(34, 197, 94, 0.1)',
