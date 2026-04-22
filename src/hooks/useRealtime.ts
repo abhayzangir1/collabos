@@ -15,6 +15,8 @@ export function useRealtime(configs: RealtimeConfig[]) {
   const channelsRef = useRef<RealtimeChannel[]>([]);
   const [connectionError, setConnectionError] = useState(false);
 
+  const [retryCounter, setRetryCounter] = useState(0);
+
   useEffect(() => {
     const activeConfigs = configs.filter((c) => c.enabled !== false);
     if (activeConfigs.length === 0) return;
@@ -23,7 +25,7 @@ export function useRealtime(configs: RealtimeConfig[]) {
 
     for (const config of activeConfigs) {
       const channel = supabase
-        .channel(config.channel)
+        .channel(config.channel + retryCounter)
         .on(
           'postgres_changes' as never,
           {
@@ -56,15 +58,22 @@ export function useRealtime(configs: RealtimeConfig[]) {
       channelsRef.current = [];
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configs.map((c) => c.channel + c.table + (c.filter ?? '')).join(',')]);
+  }, [configs.map((c) => c.channel + c.table + (c.filter ?? '')).join(','), retryCounter]);
 
   const refresh = useCallback(() => {
     setConnectionError(false);
-    // Force re-subscribe by removing and re-creating channels
-    for (const channel of channelsRef.current) {
-      supabase.removeChannel(channel);
-    }
+    setRetryCounter((c) => c + 1);
   }, []);
+
+  // Auto-reconnect
+  useEffect(() => {
+    if (connectionError) {
+      const timer = setTimeout(() => {
+        refresh();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [connectionError, refresh]);
 
   return { connectionError, refresh };
 }

@@ -250,8 +250,13 @@ export default function Analytics() {
                       </span>
                     ))}
                   </div>
-                  <div style={{ marginTop: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', padding: '2rem 0' }}>
-                    {t('analytics.telemetry.noData')}
+                  <div style={{ marginTop: '1rem', textAlign: 'center', padding: '1.5rem 0' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--accent)' }}>
+                      {(track as any).calculated_value ?? 0}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '0.25rem' }}>
+                      {track.metric_type.replace('_', ' ')}
+                    </div>
                   </div>
                 </div>
               ))}

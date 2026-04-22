@@ -94,7 +94,43 @@ export function useAnalytics(startDate: string, endDate: string) {
         .select('*')
         .eq('user_id', user.id);
 
-      setTelemetryTracks((tracks as TelemetryTrack[]) ?? []);
+      const tracksList = (tracks as TelemetryTrack[]) ?? [];
+      
+      // Calculate real data for tracks
+      const { data: recentProofs } = await supabase
+        .from('proofs')
+        .select('skill_tags')
+        .eq('user_id', user.id)
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
+
+      for (const track of tracksList) {
+        let val = 0;
+        const trackDomains = track.skill_tags.map(t => t.domain);
+        
+        if (track.metric_type === 'trade_frequency') {
+          val = completedTrades?.filter(tr => {
+            const l = tr.listing as unknown as { skill_offered_tags: SkillTag[]; skill_requested_tags: SkillTag[] } | null;
+            const tags = [...(l?.skill_offered_tags ?? []), ...(l?.skill_requested_tags ?? [])];
+            return tags.some(t => trackDomains.includes(t.domain));
+          }).length ?? 0;
+        } else if (track.metric_type === 'hours_exchanged') {
+          val = completedTrades?.filter(tr => {
+            const l = tr.listing as unknown as { skill_offered_tags: SkillTag[]; skill_requested_tags: SkillTag[] } | null;
+            const tags = [...(l?.skill_offered_tags ?? []), ...(l?.skill_requested_tags ?? [])];
+            return tags.some(t => trackDomains.includes(t.domain));
+          }).reduce((acc, tr) => acc + ((tr.listing as unknown as { hours_range: number })?.hours_range ?? 0), 0) ?? 0;
+        } else if (track.metric_type === 'proof_additions') {
+          val = recentProofs?.filter(p => {
+            const tags = p.skill_tags as SkillTag[];
+            return tags.some(t => trackDomains.includes(t.domain));
+          }).length ?? 0;
+        }
+        
+        (track as any).calculated_value = val;
+      }
+
+      setTelemetryTracks(tracksList);
     } finally {
       setLoading(false);
     }

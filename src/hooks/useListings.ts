@@ -48,6 +48,18 @@ export function useListings(workspaceId?: string) {
     const { user } = useAuthStore.getState();
     if (!user) throw new Error('Not authenticated');
 
+    // Check for max 5 active listings
+    const { count, error: countError } = await supabase
+      .from('listings')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_active', true);
+
+    if (countError) throw countError;
+    if (count && count >= 5) {
+      throw new Error('You can only have up to 5 active listings. Please deactivate an existing listing first.');
+    }
+
     const { data, error: insertError } = await supabase
       .from('listings')
       .insert({

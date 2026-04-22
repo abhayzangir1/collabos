@@ -100,6 +100,12 @@ export function useTrades() {
 
     if (updateError) throw updateError;
 
+    // Get trade to find listing_id
+    const { data: trade } = await supabase.from('trades').select('listing_id').eq('id', tradeId).single();
+    if (trade && trade.listing_id) {
+      await supabase.from('listings').update({ is_active: false }).eq('id', trade.listing_id);
+    }
+
     // Set first milestone to In Progress
     const { data: milestones } = await supabase
       .from('milestones')
@@ -123,7 +129,7 @@ export function useTrades() {
     await fetchTrades();
   }, [fetchTrades]);
 
-  const markMilestoneComplete = useCallback(async (milestoneId: string, tradeId: string) => {
+  const markMilestoneComplete = useCallback(async (milestoneId: string, _tradeId: string) => {
     if (!user) throw new Error('Not authenticated');
 
     // Check for open disputes
@@ -137,55 +143,12 @@ export function useTrades() {
       throw new Error('Cannot mark complete while a dispute is open on this milestone.');
     }
 
-    // Get the trade to determine role
-    const { data: trade } = await supabase.from('trades').select('*').eq('id', tradeId).single();
-    if (!trade) throw new Error('Trade not found');
+    const { error: rpcError } = await supabase.rpc('confirm_milestone', {
+      p_milestone_id: milestoneId,
+      p_user_id: user.id
+    });
 
-    const tradeRecord = trade as Trade;
-    const isProposer = tradeRecord.proposer_user_id === user.id;
-    const confirmField = isProposer ? 'party_a_confirmed' : 'party_b_confirmed';
-
-    const { data: milestone } = await supabase.from('milestones').select('*').eq('id', milestoneId).single();
-    if (!milestone) throw new Error('Milestone not found');
-
-    const ms = milestone as Milestone;
-    const updates: Partial<Milestone> = { [confirmField]: true };
-
-    // Check if both confirmed
-    const otherConfirmed = isProposer ? ms.party_b_confirmed : ms.party_a_confirmed;
-    if (otherConfirmed) {
-      updates.status = 'Completed';
-    } else {
-      updates.status = 'Awaiting Confirmation';
-    }
-
-    await supabase.from('milestones').update(updates).eq('id', milestoneId);
-
-    // If completed, advance next milestone
-    if (updates.status === 'Completed') {
-      const { data: allMilestones } = await supabase
-        .from('milestones')
-        .select('*')
-        .eq('trade_id', tradeId)
-        .order('sequence');
-
-      if (allMilestones) {
-        const milestonesList = allMilestones as Milestone[];
-        const allCompleted = milestonesList.every((m) => m.id === milestoneId || m.status === 'Completed');
-
-        if (allCompleted) {
-          // Complete trade
-          await supabase.from('trades').update({ status: 'Completed', completed_at: new Date().toISOString() }).eq('id', tradeId);
-          // Trust score recalculation would be triggered by DB trigger
-        } else {
-          // Advance next milestone
-          const nextMs = milestonesList.find((m) => m.sequence === ms.sequence + 1);
-          if (nextMs) {
-            await supabase.from('milestones').update({ status: 'In Progress' }).eq('id', nextMs.id);
-          }
-        }
-      }
-    }
+    if (rpcError) throw rpcError;
 
     await fetchTrades();
   }, [user, fetchTrades]);
@@ -287,19 +250,17 @@ export function useTradeDetail(tradeId: string) {
 
   const addReaction = useCallback(async (messageId: string, emoji: string) => {
     if (!user) return;
-    const msg = messages.find((m) => m.id === messageId);
-    if (!msg) return;
+    const { data: result, error } = await supabase.rpc('toggle_message_reaction', {
+      p_message_id: messageId,
+      p_user_id: user.id,
+      p_emoji: emoji
+    });
 
-    const reactions = { ...msg.reactions };
-    const users = reactions[emoji] ?? [];
-    if (users.includes(user.id)) {
-      reactions[emoji] = users.filter((id) => id !== user.id);
-    } else {
-      reactions[emoji] = [...users, user.id];
+    if (error) return;
+
+    if (result && result.success) {
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, reactions: result.reactions } : m)));
     }
-
-    await supabase.from('messages').update({ reactions }).eq('id', messageId);
-    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, reactions } : m)));
   }, [user, messages]);
 
   const uploadEvidence = useCallback(async (milestoneId: string, file: File) => {
