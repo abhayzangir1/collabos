@@ -27,7 +27,7 @@ export default function Register() {
     setLoading(true);
     setError('');
     try {
-      const { error: authError } = await supabase.auth.signUp({
+      const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -41,9 +41,13 @@ export default function Register() {
       });
       if (authError) throw authError;
 
-      // Profile creation is now automatically handled by PostgreSQL trigger handling the auth.users INSERT event.
-
-      navigate('/verify-email', { state: { email } });
+      // If email confirmation is disabled in Supabase, a session is returned immediately.
+      if (data.session) {
+        navigate('/dashboard');
+      } else {
+        // Fallback just in case email confirmation is still enabled
+        navigate('/verify-email', { state: { email } });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
