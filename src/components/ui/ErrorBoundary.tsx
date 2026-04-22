@@ -18,7 +18,20 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    if (
+      error.message.includes('Failed to fetch dynamically imported module') ||
+      error.message.includes('Importing a module script failed')
+    ) {
+      if (!sessionStorage.getItem('vite_chunk_reload')) {
+        sessionStorage.setItem('vite_chunk_reload', 'true');
+        window.location.reload();
+      }
+    }
     return { hasError: true, error };
+  }
+
+  componentDidMount() {
+    sessionStorage.removeItem('vite_chunk_reload');
   }
 
   render() {
