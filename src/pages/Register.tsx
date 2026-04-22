@@ -24,15 +24,31 @@ export default function Register() {
   const [customTags, setCustomTags] = useState<string[]>(['', '', '']);
 
   async function handleSubmit() {
+    if (!mononym.trim()) {
+      setError('Username cannot be empty.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
+      // Check for duplicate username
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('mononym', mononym.trim())
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error('This username is already taken. Please choose another.');
+      }
+
       const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            mononym,
+            mononym: mononym.trim(),
             dna_type: dnaType,
             custom_dna_label: dnaType === 'Custom' ? customLabel : null,
             custom_dna_tags: dnaType === 'Custom' ? customTags.filter(Boolean) : [],

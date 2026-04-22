@@ -20,6 +20,7 @@ export default function Settings() {
   const [customLabel, setCustomLabel] = useState(profile?.custom_dna_label ?? '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
   const [resetSent, setResetSent] = useState(false);
   const [sessions, setSessions] = useState<{ id: string; device_label: string; last_active: string; created_at: string }[]>([]);
 
@@ -45,22 +46,44 @@ export default function Settings() {
   }, [user?.email]);
 
   async function handleSaveProfile() {
-    setSaving(true); setSaved(false);
+    if (!mononym.trim()) {
+      setError('Username cannot be empty.');
+      return;
+    }
+
+    setSaving(true); 
+    setSaved(false);
+    setError('');
+
     try {
-      await supabase.from('profiles').update({
-        mononym,
+      if (mononym.trim().toLowerCase() !== profile?.mononym?.toLowerCase()) {
+        const { data: existing } = await supabase
+          .from('profiles')
+          .select('id')
+          .ilike('mononym', mononym.trim())
+          .maybeSingle();
+
+        if (existing) {
+          throw new Error('This username is already taken. Please choose another.');
+        }
+      }
+
+      const { error: updateError } = await supabase.from('profiles').update({
+        mononym: mononym.trim(),
         dna_type: dnaType,
         custom_dna_label: dnaType === 'Custom' ? customLabel : null,
       }).eq('id', user?.id);
 
-      if (email !== user?.email) {
-        await supabase.auth.updateUser({ email });
-      }
+      if (updateError) throw updateError;
 
-      useAuthStore.getState().setProfile({ ...profile!, mononym, dna_type: dnaType, custom_dna_label: dnaType === 'Custom' ? customLabel : null });
+      useAuthStore.getState().setProfile({ ...profile!, mononym: mononym.trim(), dna_type: dnaType, custom_dna_label: dnaType === 'Custom' ? customLabel : null });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } finally { setSaving(false); }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update profile');
+    } finally { 
+      setSaving(false); 
+    }
   }
 
   async function handleResetPassword() {
@@ -91,7 +114,7 @@ export default function Settings() {
         </div>
         <div className="form-group">
           <label className="form-label">{t('settings.profile.email')}</label>
-          <input className="neu-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input className="neu-input" type="email" value={email} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} title="Email cannot be changed" />
         </div>
         <div className="form-group">
           <label className="form-label">{t('settings.profile.dnaType')}</label>
@@ -104,6 +127,11 @@ export default function Settings() {
           <div className="form-group">
             <label className="form-label">Custom DNA Label</label>
             <input className="neu-input" value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} />
+          </div>
+        )}
+        {error && (
+          <div style={{ color: 'var(--error)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+            {error}
           </div>
         )}
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
