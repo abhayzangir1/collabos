@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Mail, RefreshCw, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store';
+import type { Profile } from '@/types/database';
 
 export default function VerifyEmail() {
   const { t } = useI18n();
@@ -11,9 +12,9 @@ export default function VerifyEmail() {
   const location = useLocation();
   const { user, setSession, setUser, setProfile } = useAuthStore();
   
-  // Try to get email securely from our strict router state or fallback to global store
-  const targetEmail = (location.state as any)?.email || user?.email;
+  const initialEmail = (location.state as { email?: string })?.email || user?.email || '';
   
+  const [targetEmail, setTargetEmail] = useState(initialEmail);
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -21,12 +22,19 @@ export default function VerifyEmail() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
+  // Update targetEmail if user object loads late
+  useEffect(() => {
+    if (!targetEmail && user?.email) {
+      setTargetEmail(user.email);
+    }
+  }, [user?.email, targetEmail]);
+
   async function handleResend() {
     setLoading(true);
     setError('');
     setSuccess(false);
     try {
-      if (!targetEmail) throw new Error('No email found to resend to.');
+      if (!targetEmail) throw new Error('Please enter your email to resend.');
       const { error } = await supabase.auth.resend({ type: 'signup', email: targetEmail });
       if (error) throw error;
       setSent(true);
@@ -39,7 +47,10 @@ export default function VerifyEmail() {
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
-    if (!otp || otp.length !== 6 || !targetEmail) return;
+    if (!otp || otp.length !== 6 || !targetEmail) {
+      if (!targetEmail) setError('Please enter your email address');
+      return;
+    }
     
     setVerifying(true);
     setError('');
@@ -66,7 +77,7 @@ export default function VerifyEmail() {
           .single();
 
         if (profileData) {
-          setProfile(profileData as any);
+          setProfile(profileData as Profile);
         }
       }
       
@@ -120,22 +131,6 @@ export default function VerifyEmail() {
           {t('auth.verify.subtitle')}
         </p>
 
-        {targetEmail && (
-          <div style={{
-            padding: '0.75rem 1rem',
-            background: 'var(--surface-1)',
-            border: '1.5px solid var(--surface-1-border)',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '0.85rem',
-            fontFamily: 'var(--font-mono)',
-            color: 'var(--accent)',
-            marginBottom: '1.5rem',
-            wordBreak: 'break-all',
-          }}>
-            {targetEmail}
-          </div>
-        )}
-
         {error && (
           <div style={{
             padding: '0.75rem',
@@ -171,6 +166,19 @@ export default function VerifyEmail() {
 
         {!success && (
           <form onSubmit={handleVerify}>
+            <div className="form-group" style={{ marginBottom: '1.5rem', textAlign: 'left' }}>
+              <label className="form-label">{t('auth.login.email')}</label>
+              <input
+                type="email"
+                className="neu-input"
+                value={targetEmail}
+                onChange={(e) => setTargetEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                disabled={verifying}
+              />
+            </div>
+            
             <div className="form-group" style={{ marginBottom: '1.5rem' }}>
               <input
                 type="text"
@@ -195,7 +203,7 @@ export default function VerifyEmail() {
             <button
               type="submit"
               className="neu-btn neu-btn-primary"
-              disabled={verifying || otp.length !== 6}
+              disabled={verifying || otp.length !== 6 || !targetEmail}
               style={{ width: '100%', padding: '0.875rem', marginBottom: '1rem', fontSize: '0.95rem' }}
             >
               {verifying ? <div className="spinner" style={{ width: 18, height: 18 }} /> : <>{t('auth.verify.submit')} <ArrowRight size={16} /></>}
@@ -219,8 +227,9 @@ export default function VerifyEmail() {
 
         <button
           className="neu-btn neu-btn-secondary"
+          type="button"
           onClick={handleResend}
-          disabled={loading}
+          disabled={loading || !targetEmail}
           style={{ padding: '0.75rem 1.5rem' }}
         >
           {loading ? <div className="spinner" style={{ width: 16, height: 16 }} /> : <><RefreshCw size={14} /> {t('auth.verify.resend')}</>}

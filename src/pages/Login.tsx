@@ -199,6 +199,11 @@ export default function Login() {
               >
                 {t('auth.login.forgot')}
               </button>
+              
+              <Link to="/verify-email" style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '1.25rem', textDecoration: 'underline' }}>
+                Need to verify your email?
+              </Link>
+
               <span style={{ color: 'var(--text-muted)' }}>{t('auth.login.register')} </span>
               <Link to="/register" style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('auth.login.registerLink')}</Link>
             </>
