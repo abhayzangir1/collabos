@@ -251,12 +251,22 @@ export function useTradeDetail(tradeId: string) {
         setMessages(msgs);
         setHasMoreMessages(msgs.length >= MESSAGES_PER_PAGE);
         msgOffsetRef.current = msgs.length;
+
+        if (user) {
+          const unread = msgs.filter((msg) => msg.user_id !== user.id && !msg.read_by.includes(user.id));
+          await Promise.all(unread.map((msg) =>
+            supabase
+              .from('messages')
+              .update({ read_by: [...msg.read_by, user.id] })
+              .eq('id', msg.id)
+          ));
+        }
       }
       if (dispRes.data) setDisputes(dispRes.data as unknown as Dispute[]);
     } finally {
       setLoading(false);
     }
-  }, [tradeId]);
+  }, [tradeId, user]);
 
   useEffect(() => {
     fetchAll();
@@ -340,6 +350,26 @@ export function useTradeDetail(tradeId: string) {
         user_id: user.id,
         file_url: urlData?.signedUrl ?? path,
         file_name: file.name,
+      })
+      .select('*, profile:profiles(*)')
+      .single();
+
+    if (insertError) throw insertError;
+    setEvidence((prev) => [...prev, data as unknown as Evidence]);
+  }, [user, tradeId]);
+
+  const addEvidenceLink = useCallback(async (milestoneId: string, link: string) => {
+    if (!user || !tradeId) throw new Error('Not authenticated');
+
+    const { data, error: insertError } = await supabase
+      .from('evidence')
+      .insert({
+        trade_id: tradeId,
+        milestone_id: milestoneId,
+        user_id: user.id,
+        file_url: null,
+        file_name: null,
+        link,
       })
       .select('*, profile:profiles(*)')
       .single();
@@ -438,6 +468,7 @@ export function useTradeDetail(tradeId: string) {
     sendMessage,
     addReaction,
     uploadEvidence,
+    addEvidenceLink,
     openDispute,
     addDisputeComment,
     loadMoreMessages,

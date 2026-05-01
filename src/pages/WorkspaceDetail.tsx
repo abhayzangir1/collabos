@@ -5,6 +5,7 @@ import { useI18n } from '@/i18n';
 import { useWorkspaceDetail } from '@/hooks/useWorkspaces';
 import { useListings } from '@/hooks/useListings';
 import { useTrades } from '@/hooks/useTrades';
+import { useRealtime } from '@/hooks/useRealtime';
 import { useAuthStore } from '@/store';
 import { Modal, ConfirmDialog } from '@/components/ui/Modal';
 import { LoadingFallback, EmptyState } from '@/components/ui/ErrorBoundary';
@@ -20,8 +21,8 @@ export default function WorkspaceDetail() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { workspace, members, invitations, loading, generateInvite, revokeInvite, changeMemberRole, removeMember, updateWorkspace, deleteWorkspace, refetch } = useWorkspaceDetail(id ?? '');
-  const { listings } = useListings(id);
-  const { trades, acceptTrade } = useTrades();
+  const { listings, refetch: refetchListings } = useListings(id);
+  const { trades, acceptTrade, refetch: refetchTrades } = useTrades();
   const { user } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<'members' | 'pipeline' | 'listings' | 'settings'>('members');
@@ -37,6 +38,17 @@ export default function WorkspaceDetail() {
   const workspaceTrades = trades.filter((tr) => tr.workspace_id === id);
   const isOwner = workspace?.user_role === 'Owner';
   const isAdmin = workspace?.user_role === 'Admin' || isOwner;
+
+  useRealtime([
+    { channel: `workspace-trades-${id}`, table: 'trades', filter: `workspace_id=eq.${id}`, onEvent: () => refetchTrades(), enabled: !!id },
+    { channel: `workspace-listings-${id}`, table: 'listings', filter: `workspace_id=eq.${id}`, onEvent: () => refetchListings(), enabled: !!id },
+    { channel: `workspace-milestones-${id}`, table: 'milestones', onEvent: (payload) => {
+      const row = (payload.new ?? payload.old) as { trade_id?: string } | undefined;
+      if (row?.trade_id && workspaceTrades.some((trade) => trade.id === row.trade_id)) {
+        refetchTrades();
+      }
+    }, enabled: workspaceTrades.length > 0 },
+  ]);
 
   useEffect(() => {
     if (!id) return;

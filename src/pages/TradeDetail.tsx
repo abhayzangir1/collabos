@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, lazy, Suspense, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Check, Upload, Send, AlertTriangle, Clock, FileText, Shield } from 'lucide-react';
+import { Check, Upload, Send, AlertTriangle, Clock, FileText, Shield, Link as LinkIcon } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { useTradeDetail } from '@/hooks/useTrades';
 import { useAuthStore } from '@/store';
@@ -16,12 +16,15 @@ export default function TradeDetail() {
   const { id } = useParams<{ id: string }>();
   const { t } = useI18n();
   const { user } = useAuthStore();
-  const { trade, milestones, evidence, messages, disputes, loading, hasMoreMessages, loadingMore, sendMessage, addReaction, uploadEvidence, openDispute, addDisputeComment, loadMoreMessages, markMilestoneComplete, refetch } = useTradeDetail(id ?? '');
+  const { trade, milestones, evidence, messages, disputes, loading, hasMoreMessages, loadingMore, sendMessage, addReaction, uploadEvidence, addEvidenceLink, openDispute, addDisputeComment, loadMoreMessages, markMilestoneComplete, refetch } = useTradeDetail(id ?? '');
   const [activeTab, setActiveTab] = useState<'milestones' | 'evidence' | 'chat' | 'dispute'>('milestones');
   const [msgInput, setMsgInput] = useState('');
   const [evidenceScope, setEvidenceScope] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [evidenceLink, setEvidenceLink] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const [evidenceError, setEvidenceError] = useState('');
   const [sendingMsg, setSendingMsg] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<number | null>(null);
@@ -73,14 +76,31 @@ export default function TradeDetail() {
     }, 1200);
   }
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function uploadSelectedEvidence(file: File) {
     if (!file || !evidenceScope) return;
+    setEvidenceError('');
     const error = validateFileUpload(file, ALLOWED_FILE_TYPES, MAX_FILE_SIZE_MB);
-    if (error) { alert(error); return; }
+    if (error) { setEvidenceError(error); return; }
     setUploading(true); setUploadProgress(0);
     const interval = setInterval(() => setUploadProgress((p) => Math.min(p + 15, 90)), 200);
-    try { await uploadEvidence(evidenceScope, file); setUploadProgress(100); } finally { clearInterval(interval); setTimeout(() => { setUploading(false); setUploadProgress(0); }, 500); }
+    try { await uploadEvidence(evidenceScope, file); setUploadProgress(100); } catch (err) { setEvidenceError(getErrorMessage(err)); } finally { clearInterval(interval); setTimeout(() => { setUploading(false); setUploadProgress(0); }, 500); }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) await uploadSelectedEvidence(file);
+  }
+
+  async function handleEvidenceLink() {
+    if (!evidenceScope || !evidenceLink.trim()) return;
+    setEvidenceError('');
+    try {
+      const url = new URL(evidenceLink.trim());
+      await addEvidenceLink(evidenceScope, url.toString());
+      setEvidenceLink('');
+    } catch (err) {
+      setEvidenceError(err instanceof TypeError ? 'Enter a valid evidence link.' : getErrorMessage(err));
+    }
   }
 
   // Escalation check
@@ -177,7 +197,8 @@ export default function TradeDetail() {
       {/* Evidence Tab */}
       {activeTab === 'evidence' && (
         <div>
-          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
+          {evidenceError && <div className="form-error" style={{ marginBottom: '1rem', padding: '0.5rem', background: 'rgba(239,68,68,0.1)', borderRadius: 'var(--radius-sm)' }}>{evidenceError}</div>}
+          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <div style={{ flex: 1 }}>
               <label className="form-label">{t('trades.evidence.scope')}</label>
               <select className="neu-input" value={evidenceScope} onChange={(e) => setEvidenceScope(e.target.value)}>
@@ -185,11 +206,33 @@ export default function TradeDetail() {
                 {milestones.map((ms) => <option key={ms.id} value={ms.id}>{ms.title}</option>)}
               </select>
             </div>
-            <label className="neu-btn neu-btn-secondary" style={{ cursor: 'pointer', position: 'relative' }}>
-              <Upload size={14} /> Upload
-              <input type="file" onChange={handleFileUpload} style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', top: 0, left: 0, cursor: 'pointer' }} disabled={!evidenceScope || uploading} />
-            </label>
+            <div style={{ flex: '1 1 260px' }}>
+              <label className="form-label">Evidence link</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input className="neu-input" value={evidenceLink} onChange={(e) => setEvidenceLink(e.target.value)} placeholder="https://..." disabled={!evidenceScope || uploading} />
+                <button className="neu-btn neu-btn-secondary" onClick={handleEvidenceLink} disabled={!evidenceScope || !evidenceLink.trim() || uploading}>
+                  <LinkIcon size={14} />
+                </button>
+              </div>
+            </div>
           </div>
+          <label
+            className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
+            style={{ display: 'block', marginBottom: '1rem', cursor: evidenceScope && !uploading ? 'pointer' : 'not-allowed', opacity: evidenceScope ? 1 : 0.65 }}
+            onDragOver={(e) => { if (evidenceScope && !uploading) { e.preventDefault(); setDragOver(true); } }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file) void uploadSelectedEvidence(file);
+            }}
+          >
+            <Upload size={22} style={{ color: 'var(--accent)', marginBottom: '0.5rem' }} />
+            <div style={{ fontWeight: 800, marginBottom: '0.25rem' }}>Drop evidence file here</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>PDF, image, or document up to {MAX_FILE_SIZE_MB}MB</div>
+            <input type="file" onChange={handleFileUpload} accept={ALLOWED_FILE_TYPES.join(',')} style={{ display: 'none' }} disabled={!evidenceScope || uploading} />
+          </label>
           {uploading && (
             <div className="progress-bar" style={{ marginBottom: '1rem' }}>
               <div className="progress-bar-fill" style={{ width: `${uploadProgress}%` }} />
@@ -205,7 +248,7 @@ export default function TradeDetail() {
                     {ev.profile?.mononym} · {formatRelativeTime(ev.created_at)}
                   </div>
                 </div>
-                {ev.file_url && <a href={ev.file_url} target="_blank" rel="noopener noreferrer" className="neu-btn neu-btn-ghost" style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}>View</a>}
+                {(ev.file_url || ev.link) && <a href={ev.file_url ?? ev.link ?? '#'} target="_blank" rel="noopener noreferrer" className="neu-btn neu-btn-ghost" style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}>View</a>}
               </div>
             ))}
             {evidence.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '1rem 0' }}>No evidence submitted yet.</p>}

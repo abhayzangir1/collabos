@@ -58,7 +58,7 @@ export function useRealtime(configs: RealtimeConfig[]) {
       channelsRef.current = [];
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configs.map((c) => c.channel + c.table + (c.filter ?? '')).join(','), retryCounter]);
+  }, [configs.map((c) => c.channel + c.table + (c.filter ?? '') + String(c.enabled !== false)).join(','), retryCounter]);
 
   const refresh = useCallback(() => {
     setConnectionError(false);
