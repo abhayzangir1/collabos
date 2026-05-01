@@ -6,10 +6,19 @@ import { useTrades } from '@/hooks/useTrades';
 import { useAuthStore, useNotificationStore } from '@/store';
 import { EmptyState, LoadingFallback } from '@/components/ui/ErrorBoundary';
 import { getStatusColor, formatDateTime } from '@/lib/utils';
-import type { TradeStatus } from '@/types/database';
+import { supabase } from '@/lib/supabase';
+import type { ActivityEventType, TradeStatus } from '@/types/database';
 import { useEffect } from 'react';
 
 const TABS: (TradeStatus | 'All')[] = ['All', 'Active', 'Proposed', 'Completed', 'Declined'];
+const TRADE_ACTIVITY_TYPES: ActivityEventType[] = [
+  'trade_proposal_received',
+  'trade_accepted',
+  'trade_declined',
+  'milestone_completed',
+  'dispute_opened',
+  'dispute_updated',
+];
 
 export default function TradeHub() {
   const { t } = useI18n();
@@ -20,7 +29,16 @@ export default function TradeHub() {
   const [activeTab, setActiveTab] = useState<TradeStatus | 'All'>('All');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  useEffect(() => { clearTrades(); }, [clearTrades]);
+  useEffect(() => {
+    clearTrades();
+    if (!user) return;
+    void supabase
+      .from('activity_feed')
+      .update({ is_read: true })
+      .eq('recipient_user_id', user.id)
+      .eq('is_read', false)
+      .in('event_type', TRADE_ACTIVITY_TYPES);
+  }, [clearTrades, user]);
 
   const filtered = useMemo(() => {
     if (activeTab === 'All') return trades;

@@ -126,6 +126,11 @@ export default function Dashboard() {
     if (!user) return;
     void fetchKPIs();
     void fetchActivityFeed();
+    void supabase
+      .from('activity_feed')
+      .update({ is_read: true })
+      .eq('recipient_user_id', user.id)
+      .eq('is_read', false);
     clearActivity();
   }, [user, fetchKPIs, fetchActivityFeed, clearActivity]);
 
@@ -138,6 +143,7 @@ export default function Dashboard() {
       .on('postgres_changes' as never, { event: '*', schema: 'public', table: 'proofs', filter: `user_id=eq.${user.id}` } as never, () => { fetchKPIs(); })
       .on('postgres_changes' as never, { event: '*', schema: 'public', table: 'trades', filter: `proposer_user_id=eq.${user.id}` } as never, () => { fetchKPIs(); })
       .on('postgres_changes' as never, { event: '*', schema: 'public', table: 'trades', filter: `recipient_user_id=eq.${user.id}` } as never, () => { fetchKPIs(); })
+      .on('postgres_changes' as never, { event: 'INSERT', schema: 'public', table: 'trust_score_history', filter: `user_id=eq.${user.id}` } as never, () => { fetchKPIs(); })
       .subscribe((status: string) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setConnectionError(true);
         else setConnectionError(false);

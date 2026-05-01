@@ -26,13 +26,17 @@ export function useAnalytics(startDate: string, endDate: string) {
     if (!user) return;
     setLoading(true);
     try {
+      const endExclusive = new Date(`${endDate}T00:00:00`);
+      endExclusive.setDate(endExclusive.getDate() + 1);
+      const endExclusiveIso = endExclusive.toISOString();
+
       // Trust Score History
       const { data: historyData } = await supabase
         .from('trust_score_history')
         .select('*')
         .eq('user_id', user.id)
         .gte('created_at', startDate)
-        .lte('created_at', endDate)
+        .lt('created_at', endExclusiveIso)
         .order('created_at');
 
       setTrustHistory((historyData as TrustScoreHistory[]) ?? []);
@@ -44,46 +48,49 @@ export function useAnalytics(startDate: string, endDate: string) {
         .or(`proposer_user_id.eq.${user.id},recipient_user_id.eq.${user.id}`)
         .eq('status', 'Completed')
         .gte('completed_at', startDate)
-        .lte('completed_at', endDate);
+        .lt('completed_at', endExclusiveIso);
 
-      if (completedTrades) {
-        const domainCounts: Record<string, number> = {};
-        for (const trade of completedTrades) {
-          const listing = trade.listing as unknown as { skill_offered_tags: SkillTag[]; skill_requested_tags: SkillTag[] } | null;
-          const tags = [...(listing?.skill_offered_tags ?? []), ...(listing?.skill_requested_tags ?? [])];
-          for (const tag of tags) {
-            const t = tag as SkillTag;
-            domainCounts[t.domain] = (domainCounts[t.domain] ?? 0) + 1;
-          }
+      const completedTradeRows = completedTrades ?? [];
+      const domainCounts: Record<string, number> = {};
+      for (const trade of completedTradeRows) {
+        const listing = trade.listing as unknown as { skill_offered_tags: SkillTag[]; skill_requested_tags: SkillTag[] } | null;
+        const tags = [...(listing?.skill_offered_tags ?? []), ...(listing?.skill_requested_tags ?? [])];
+        for (const tag of tags) {
+          const t = tag as SkillTag;
+          domainCounts[t.domain] = (domainCounts[t.domain] ?? 0) + 1;
         }
-        setSkillBreakdown(Object.entries(domainCounts).map(([domain, count]) => ({ domain, count })));
-
-        // Hourly Balance
-        let offered = 0;
-        let received = 0;
-        for (const trade of completedTrades) {
-          const listing = trade.listing as unknown as { hours_range?: number } | null;
-          const hours = listing?.hours_range ?? 0;
-          if (trade.proposer_user_id === user.id) {
-            offered += hours;
-          } else {
-            received += hours;
-          }
-        }
-        setHourlyBalance({ offered, received });
       }
+      setSkillBreakdown(Object.entries(domainCounts).map(([domain, count]) => ({ domain, count })));
+
+      // Hourly Balance
+      let offered = 0;
+      let received = 0;
+      for (const trade of completedTradeRows) {
+        const listing = trade.listing as unknown as { hours_range?: number } | null;
+        const hours = listing?.hours_range ?? 0;
+        if (trade.proposer_user_id === user.id) {
+          offered += hours;
+        } else {
+          received += hours;
+        }
+      }
+      setHourlyBalance({ offered, received });
 
       // Summary Metrics
       const { count: tradesCount } = await supabase
         .from('trades')
         .select('*', { count: 'exact', head: true })
         .or(`proposer_user_id.eq.${user.id},recipient_user_id.eq.${user.id}`)
-        .eq('status', 'Completed');
+        .eq('status', 'Completed')
+        .gte('completed_at', startDate)
+        .lt('completed_at', endExclusiveIso);
 
       const { count: proofsCount } = await supabase
         .from('proofs')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .gte('created_at', startDate)
+        .lt('created_at', endExclusiveIso);
 
       setSummaryMetrics({
         tradesCompleted: tradesCount ?? 0,
@@ -109,7 +116,7 @@ export function useAnalytics(startDate: string, endDate: string) {
         .select('skill_tags')
         .eq('user_id', user.id)
         .gte('created_at', startDate)
-        .lte('created_at', endDate);
+        .lt('created_at', endExclusiveIso);
 
       for (const track of tracksList) {
         let val = 0;

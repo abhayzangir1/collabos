@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Users, Link2, Copy, Check, Trash2, LayoutList, Columns, Shield } from 'lucide-react';
 import { useI18n } from '@/i18n';
@@ -11,6 +11,7 @@ import { LoadingFallback, EmptyState } from '@/components/ui/ErrorBoundary';
 import { SkillTagDisplay } from '@/components/ui/SkillTagInput';
 import { formatDate, formatRelativeTime, getStatusColor } from '@/lib/utils';
 import type { TradeStatus } from '@/types/database';
+import { getErrorMessage } from '@/lib/errors';
 
 const KANBAN_COLUMNS: TradeStatus[] = ['Proposed', 'Active', 'Disputed', 'Completed', 'Declined'];
 
@@ -31,16 +32,33 @@ export default function WorkspaceDetail() {
   const [showDelete, setShowDelete] = useState(false);
   const [settingsName, setSettingsName] = useState('');
   const [settingsDesc, setSettingsDesc] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const workspaceTrades = trades.filter((tr) => tr.workspace_id === id);
   const isOwner = workspace?.user_role === 'Owner';
   const isAdmin = workspace?.user_role === 'Admin' || isOwner;
 
+  useEffect(() => {
+    if (!id) return;
+    const saved = sessionStorage.getItem(`collabos:${id}:pipeline-view`);
+    if (saved === 'list' || saved === 'kanban') {
+      setPipelineView(saved);
+    }
+  }, [id]);
+
+  function setPersistedPipelineView(view: 'list' | 'kanban') {
+    setPipelineView(view);
+    if (id) {
+      sessionStorage.setItem(`collabos:${id}:pipeline-view`, view);
+    }
+  }
+
   async function handleGenerateInvite() {
     try {
+      setActionError('');
       const result = await generateInvite();
       setInviteUrl(result.url);
-    } catch { /* handled */ }
+    } catch (err) { setActionError(getErrorMessage(err)); }
   }
 
   async function handleCopy() {
@@ -51,7 +69,11 @@ export default function WorkspaceDetail() {
 
   async function handleDragAccept(tradeId: string) {
     if (!isAdmin) return;
-    try { await acceptTrade(tradeId); refetch(); } catch { /* handled */ }
+    try {
+      setActionError('');
+      await acceptTrade(tradeId);
+      refetch();
+    } catch (err) { setActionError(getErrorMessage(err)); }
   }
 
   if (loading || !workspace) return <LoadingFallback />;
@@ -73,6 +95,12 @@ export default function WorkspaceDetail() {
           </button>
         ))}
       </div>
+
+      {actionError && (
+        <div className="form-error" style={{ marginBottom: '1rem', padding: '0.5rem', background: 'rgba(239,68,68,0.1)', borderRadius: 'var(--radius-sm)' }}>
+          {actionError}
+        </div>
+      )}
 
       {/* Members Tab */}
       {activeTab === 'members' && (
@@ -97,11 +125,11 @@ export default function WorkspaceDetail() {
                 <span className={`neu-badge ${member.role === 'Owner' ? 'neu-badge-gold' : member.role === 'Admin' ? 'neu-badge-info' : 'neu-badge-muted'}`} style={{ fontSize: '0.55rem' }}>{member.role}</span>
                 {isAdmin && member.user_id !== user?.id && member.role !== 'Owner' && (
                   <div style={{ display: 'flex', gap: '0.25rem' }}>
-                    <select className="neu-input" value={member.role} onChange={(e) => changeMemberRole(member.id, e.target.value as "Admin" | "Member")} style={{ width: 90, fontSize: '0.7rem', padding: '0.25rem' }}>
+                    <select className="neu-input" value={member.role} onChange={(e) => { setActionError(''); changeMemberRole(member.id, e.target.value as "Admin" | "Member").catch((err) => setActionError(getErrorMessage(err))); }} style={{ width: 90, fontSize: '0.7rem', padding: '0.25rem' }}>
                       <option value="Member">Member</option>
                       <option value="Admin">Admin</option>
                     </select>
-                    <button className="neu-btn neu-btn-ghost" style={{ padding: '0.25rem', color: 'var(--error)' }} onClick={() => removeMember(member.id)}>
+                    <button className="neu-btn neu-btn-ghost" style={{ padding: '0.25rem', color: 'var(--error)' }} onClick={() => { setActionError(''); removeMember(member.id).catch((err) => setActionError(getErrorMessage(err))); }}>
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -116,10 +144,10 @@ export default function WorkspaceDetail() {
       {activeTab === 'pipeline' && (
         <div>
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-            <button className={`neu-btn ${pipelineView === 'list' ? 'neu-btn-primary' : 'neu-btn-ghost'}`} onClick={() => setPipelineView('list')} style={{ fontSize: '0.75rem' }}>
+            <button className={`neu-btn ${pipelineView === 'list' ? 'neu-btn-primary' : 'neu-btn-ghost'}`} onClick={() => setPersistedPipelineView('list')} style={{ fontSize: '0.75rem' }}>
               <LayoutList size={14} /> {t('workspaces.pipeline.listView')}
             </button>
-            <button className={`neu-btn ${pipelineView === 'kanban' ? 'neu-btn-primary' : 'neu-btn-ghost'}`} onClick={() => setPipelineView('kanban')} style={{ fontSize: '0.75rem' }}>
+            <button className={`neu-btn ${pipelineView === 'kanban' ? 'neu-btn-primary' : 'neu-btn-ghost'}`} onClick={() => setPersistedPipelineView('kanban')} style={{ fontSize: '0.75rem' }}>
               <Columns size={14} /> {t('workspaces.pipeline.kanbanView')}
             </button>
           </div>
@@ -222,7 +250,7 @@ export default function WorkspaceDetail() {
             <textarea className="neu-input" value={settingsDesc} onChange={(e) => setSettingsDesc(e.target.value)} rows={3} style={{ resize: 'vertical' }} />
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button className="neu-btn neu-btn-primary" onClick={() => updateWorkspace({ name: settingsName, description: settingsDesc })}>{t('workspaces.settings.save')}</button>
+            <button className="neu-btn neu-btn-primary" onClick={() => { setActionError(''); updateWorkspace({ name: settingsName, description: settingsDesc }).catch((err) => setActionError(getErrorMessage(err))); }}>{t('workspaces.settings.save')}</button>
             <button className="neu-btn neu-btn-danger" onClick={() => setShowDelete(true)}>{t('workspaces.settings.delete')}</button>
           </div>
         </div>
@@ -253,7 +281,7 @@ export default function WorkspaceDetail() {
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   Expires {formatDate(inv.expires_at)}
                 </div>
-                <button onClick={() => revokeInvite(inv.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>
+                <button onClick={() => { setActionError(''); revokeInvite(inv.id).catch((err) => setActionError(getErrorMessage(err))); }} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>
                   {t('workspaces.invite.revoke')}
                 </button>
               </div>

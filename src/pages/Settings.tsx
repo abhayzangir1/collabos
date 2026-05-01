@@ -19,6 +19,7 @@ export default function Settings() {
   const [email, setEmail] = useState(user?.email ?? '');
   const [dnaType, setDnaType] = useState<DnaType | 'Custom'>(profile?.dna_type as DnaType ?? 'Builder');
   const [customLabel, setCustomLabel] = useState(profile?.custom_dna_label ?? '');
+  const [customTagsText, setCustomTagsText] = useState((profile?.custom_dna_tags ?? []).join(', '));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -39,6 +40,7 @@ export default function Settings() {
       setMononym(profile.mononym);
       setDnaType(profile.dna_type as DnaType | 'Custom');
       setCustomLabel(profile.custom_dna_label ?? '');
+      setCustomTagsText((profile.custom_dna_tags ?? []).join(', '));
     }
   }, [profile]);
 
@@ -69,15 +71,36 @@ export default function Settings() {
         }
       }
 
+      const normalizedEmail = email.trim();
+      if (normalizedEmail && normalizedEmail.toLowerCase() !== user?.email?.toLowerCase()) {
+        const { error: emailError } = await supabase.auth.updateUser({ email: normalizedEmail });
+        if (emailError) throw emailError;
+      }
+
+      const customTags = customTagsText
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+        .slice(0, 8);
+
       const { error: updateError } = await supabase.from('profiles').update({
         mononym: mononym.trim(),
         dna_type: dnaType,
         custom_dna_label: dnaType === 'Custom' ? customLabel : null,
+        custom_dna_tags: dnaType === 'Custom' ? customTags : [],
       }).eq('id', user?.id);
 
       if (updateError) throw updateError;
 
-      useAuthStore.getState().setProfile({ ...profile!, mononym: mononym.trim(), dna_type: dnaType, custom_dna_label: dnaType === 'Custom' ? customLabel : null });
+      if (profile) {
+        useAuthStore.getState().setProfile({
+          ...profile,
+          mononym: mononym.trim(),
+          dna_type: dnaType,
+          custom_dna_label: dnaType === 'Custom' ? customLabel : null,
+          custom_dna_tags: dnaType === 'Custom' ? customTags : [],
+        });
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -114,7 +137,7 @@ export default function Settings() {
         </div>
         <div className="form-group">
           <label className="form-label">{t('settings.profile.email')}</label>
-          <input className="neu-input" type="email" value={email} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} title="Email cannot be changed" />
+          <input className="neu-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div className="form-group">
           <label className="form-label">{t('settings.profile.dnaType')}</label>
@@ -124,10 +147,16 @@ export default function Settings() {
           </select>
         </div>
         {dnaType === 'Custom' && (
-          <div className="form-group">
-            <label className="form-label">Custom DNA Label</label>
-            <input className="neu-input" value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} />
-          </div>
+          <>
+            <div className="form-group">
+              <label className="form-label">Custom DNA Label</label>
+              <input className="neu-input" value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Custom DNA Tags</label>
+              <input className="neu-input" value={customTagsText} onChange={(e) => setCustomTagsText(e.target.value)} placeholder="Strategy, React, Design Systems" />
+            </div>
+          </>
         )}
         {error && (
           <div style={{ color: 'var(--error)', fontSize: '0.85rem', marginBottom: '1rem' }}>

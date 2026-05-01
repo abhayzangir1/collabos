@@ -12,12 +12,12 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import VerifyEmail from '@/pages/VerifyEmail';
 import Dashboard from '@/pages/Dashboard';
+import TradeHub from '@/pages/TradeHub';
+import TradeDetail from '@/pages/TradeDetail';
 
 // Lazy-loaded (non-critical)
 const ProofChain = lazy(() => import('@/pages/ProofChain'));
 const Market = lazy(() => import('@/pages/Market'));
-const TradeHub = lazy(() => import('@/pages/TradeHub'));
-const TradeDetail = lazy(() => import('@/pages/TradeDetail'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const Workspaces = lazy(() => import('@/pages/Workspaces'));
 const WorkspaceDetail = lazy(() => import('@/pages/WorkspaceDetail'));

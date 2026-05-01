@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -15,6 +16,16 @@ import { useI18n } from '@/i18n';
 import { useAuthStore, useNotificationStore } from '@/store';
 import { supabase } from '@/lib/supabase';
 import { formatBadgeCount } from '@/lib/utils';
+import type { ActivityEventType, ActivityFeedItem } from '@/types/database';
+
+const TRADE_ACTIVITY_TYPES: ActivityEventType[] = [
+  'trade_proposal_received',
+  'trade_accepted',
+  'trade_declined',
+  'milestone_completed',
+  'dispute_opened',
+  'dispute_updated',
+];
 
 const NAV_ITEMS = [
   { path: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
@@ -30,8 +41,58 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { profile, reset } = useAuthStore();
-  const { unreadTrades } = useNotificationStore();
+  const { user, profile, reset } = useAuthStore();
+  const { unreadTrades, incrementTrades, incrementActivity, setUnreadTrades, setUnreadActivity } = useNotificationStore();
+
+  useEffect(() => {
+    if (!user) return;
+
+    let mounted = true;
+    const userId = user.id;
+
+    async function fetchUnreadCounts() {
+      const { data } = await supabase
+        .from('activity_feed')
+        .select('event_type')
+        .eq('recipient_user_id', userId)
+        .eq('is_read', false);
+
+      if (!mounted || !data) return;
+
+      const items = data as Pick<ActivityFeedItem, 'event_type'>[];
+      setUnreadTrades(items.filter((item) => TRADE_ACTIVITY_TYPES.includes(item.event_type)).length);
+      setUnreadActivity(items.filter((item) => !TRADE_ACTIVITY_TYPES.includes(item.event_type)).length);
+    }
+
+    void fetchUnreadCounts();
+
+    const channel = supabase
+      .channel(`sidebar-activity-${userId}`)
+      .on(
+        'postgres_changes' as never,
+        { event: 'INSERT', schema: 'public', table: 'activity_feed', filter: `recipient_user_id=eq.${userId}` } as never,
+        (payload: { new: ActivityFeedItem }) => {
+          if (TRADE_ACTIVITY_TYPES.includes(payload.new.event_type)) {
+            incrementTrades();
+          } else {
+            incrementActivity();
+          }
+        }
+      )
+      .on(
+        'postgres_changes' as never,
+        { event: 'UPDATE', schema: 'public', table: 'activity_feed', filter: `recipient_user_id=eq.${userId}` } as never,
+        () => {
+          void fetchUnreadCounts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [user, incrementActivity, incrementTrades, setUnreadActivity, setUnreadTrades]);
 
   async function handleLogout() {
     await supabase.auth.signOut();

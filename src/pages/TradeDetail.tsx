@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, lazy, Suspense } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Check, Upload, Send, AlertTriangle, Clock, FileText, Shield } from 'lucide-react';
 import { useI18n } from '@/i18n';
@@ -24,6 +24,7 @@ export default function TradeDetail() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [sendingMsg, setSendingMsg] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const typingTimerRef = useRef<number | null>(null);
 
   // Realtime
   const { connectionError, refresh } = useRealtime([
@@ -31,10 +32,17 @@ export default function TradeDetail() {
     { channel: `trade-ms-${id}`, table: 'milestones', filter: `trade_id=eq.${id}`, onEvent: () => refetch(), enabled: !!id },
   ]);
 
-  const { presenceState } = usePresence(`trade-presence-${id}`, user?.id ?? '', { typing: false });
+  const initialPresence = useMemo(() => ({ typing: false }), []);
+  const { presenceState, updatePresence } = usePresence(`trade-presence-${id}`, user?.id ?? '', initialPresence);
   const partnerTyping = presenceState.some((p) => p.user_id !== user?.id && p.typing);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  useEffect(() => () => {
+    if (typingTimerRef.current) {
+      window.clearTimeout(typingTimerRef.current);
+    }
+  }, []);
 
   const [msLoading, setMsLoading] = useState<string | null>(null);
   const [msError, setMsError] = useState('');
@@ -47,7 +55,22 @@ export default function TradeDetail() {
   async function handleSendMessage() {
     if (!msgInput.trim()) return;
     setSendingMsg(true);
-    try { await sendMessage(msgInput); setMsgInput(''); } finally { setSendingMsg(false); }
+    try {
+      await sendMessage(msgInput);
+      setMsgInput('');
+      await updatePresence({ typing: false, online_at: new Date().toISOString() });
+    } finally { setSendingMsg(false); }
+  }
+
+  function handleMessageInput(value: string) {
+    setMsgInput(value);
+    void updatePresence({ typing: value.trim().length > 0, online_at: new Date().toISOString() });
+    if (typingTimerRef.current) {
+      window.clearTimeout(typingTimerRef.current);
+    }
+    typingTimerRef.current = window.setTimeout(() => {
+      void updatePresence({ typing: false, online_at: new Date().toISOString() });
+    }, 1200);
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -252,7 +275,7 @@ export default function TradeDetail() {
             <input
               className="neu-input"
               value={msgInput}
-              onChange={(e) => setMsgInput(e.target.value)}
+              onChange={(e) => handleMessageInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
               placeholder={t('trades.chat.placeholder')}
             />

@@ -138,17 +138,20 @@ export function useWorkspaceDetail(workspaceId: string) {
   }, [user, workspaceId]);
 
   const revokeInvite = useCallback(async (inviteId: string) => {
-    await supabase.from('workspace_invitations').update({ revoked: true }).eq('id', inviteId);
+    const { error } = await supabase.from('workspace_invitations').update({ revoked: true }).eq('id', inviteId);
+    if (error) throw error;
     setInvitations((prev) => prev.filter((i) => i.id !== inviteId));
   }, []);
 
   const changeMemberRole = useCallback(async (memberId: string, role: 'Admin' | 'Member') => {
-    await supabase.from('workspace_members').update({ role }).eq('id', memberId);
+    const { error } = await supabase.from('workspace_members').update({ role }).eq('id', memberId);
+    if (error) throw error;
     setMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, role } : m)));
   }, []);
 
   const removeMember = useCallback(async (memberId: string) => {
-    await supabase.from('workspace_members').delete().eq('id', memberId);
+    const { error } = await supabase.from('workspace_members').delete().eq('id', memberId);
+    if (error) throw error;
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
   }, []);
 

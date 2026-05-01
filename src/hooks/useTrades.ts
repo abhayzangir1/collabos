@@ -94,6 +94,14 @@ export function useTrades() {
   }, [user, fetchTrades]);
 
   const acceptTrade = useCallback(async (tradeId: string) => {
+    if (!user) throw new Error('Not authenticated');
+
+    const { data: tradeBefore } = await supabase
+      .from('trades')
+      .select('listing_id, proposer_user_id, recipient_user_id')
+      .eq('id', tradeId)
+      .single();
+
     const { error: updateError } = await supabase
       .from('trades')
       .update({ status: 'Active' })
@@ -101,8 +109,7 @@ export function useTrades() {
 
     if (updateError) throw updateError;
 
-    // Get trade to find listing_id
-    const { data: trade } = await supabase.from('trades').select('listing_id').eq('id', tradeId).single();
+    const trade = tradeBefore;
     if (trade && trade.listing_id) {
       await supabase.from('listings').update({ is_active: false }).eq('id', trade.listing_id);
     }
@@ -118,21 +125,49 @@ export function useTrades() {
       await supabase.from('milestones').update({ status: 'In Progress' }).eq('id', milestones[0]!.id);
     }
 
+    if (trade?.proposer_user_id && trade.proposer_user_id !== user.id) {
+      await supabase.from('activity_feed').insert({
+        user_id: user.id,
+        recipient_user_id: trade.proposer_user_id,
+        event_type: 'trade_accepted',
+        metadata: { trade_id: tradeId },
+        is_read: false,
+      });
+    }
+
     await fetchTrades();
-  }, [fetchTrades]);
+  }, [user, fetchTrades]);
 
   const declineTrade = useCallback(async (tradeId: string) => {
+    if (!user) throw new Error('Not authenticated');
+
+    const { data: tradeBefore } = await supabase
+      .from('trades')
+      .select('proposer_user_id')
+      .eq('id', tradeId)
+      .single();
+
     const { error: updateError } = await supabase
       .from('trades')
       .update({ status: 'Declined' })
       .eq('id', tradeId);
     if (updateError) throw updateError;
+
+    if (tradeBefore?.proposer_user_id && tradeBefore.proposer_user_id !== user.id) {
+      await supabase.from('activity_feed').insert({
+        user_id: user.id,
+        recipient_user_id: tradeBefore.proposer_user_id,
+        event_type: 'trade_declined',
+        metadata: { trade_id: tradeId },
+        is_read: false,
+      });
+    }
+
     await fetchTrades();
-  }, [fetchTrades]);
+  }, [user, fetchTrades]);
 
   const markMilestoneComplete = useCallback(async (milestoneId: string, tradeId: string) => {
     if (!user) throw new Error('Not authenticated');
-    void tradeId;
 
     // Check for open disputes
     const { data: disputes } = await supabase
@@ -151,6 +186,23 @@ export function useTrades() {
     });
 
     if (rpcError) throw rpcError;
+
+    const { data: trade } = await supabase
+      .from('trades')
+      .select('proposer_user_id, recipient_user_id')
+      .eq('id', tradeId)
+      .single();
+
+    const recipientId = trade?.proposer_user_id === user.id ? trade?.recipient_user_id : trade?.proposer_user_id;
+    if (recipientId) {
+      await supabase.from('activity_feed').insert({
+        user_id: user.id,
+        recipient_user_id: recipientId,
+        event_type: 'milestone_completed',
+        metadata: { trade_id: tradeId, milestone_id: milestoneId },
+        is_read: false,
+      });
+    }
 
     await fetchTrades();
   }, [user, fetchTrades]);
@@ -359,8 +411,20 @@ export function useTradeDetail(tradeId: string) {
     });
 
     if (rpcError) throw rpcError;
+
+    const recipientId = trade?.proposer_user_id === user.id ? trade?.recipient_user_id : trade?.proposer_user_id;
+    if (recipientId) {
+      await supabase.from('activity_feed').insert({
+        user_id: user.id,
+        recipient_user_id: recipientId,
+        event_type: 'milestone_completed',
+        metadata: { trade_id: tradeId, milestone_id: milestoneId },
+        is_read: false,
+      });
+    }
+
     await fetchAll();
-  }, [fetchAll, user]);
+  }, [fetchAll, trade, tradeId, user]);
 
   return {
     trade,
