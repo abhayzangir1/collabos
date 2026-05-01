@@ -4,6 +4,10 @@ import { useAuthStore } from '@/store';
 import type { TrustScoreHistory, TelemetryTrack, SkillTag } from '@/types/database';
 import type { MetricType } from '@/types/database';
 
+export type AnalyticsTelemetryTrack = TelemetryTrack & {
+  calculated_value: number;
+};
+
 export function useAnalytics(startDate: string, endDate: string) {
   const [trustHistory, setTrustHistory] = useState<TrustScoreHistory[]>([]);
   const [skillBreakdown, setSkillBreakdown] = useState<{ domain: string; count: number }[]>([]);
@@ -14,7 +18,7 @@ export function useAnalytics(startDate: string, endDate: string) {
     endorsements: 0,
     trustScore: 0,
   });
-  const [telemetryTracks, setTelemetryTracks] = useState<TelemetryTrack[]>([]);
+  const [telemetryTracks, setTelemetryTracks] = useState<AnalyticsTelemetryTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, profile } = useAuthStore();
 
@@ -94,7 +98,10 @@ export function useAnalytics(startDate: string, endDate: string) {
         .select('*')
         .eq('user_id', user.id);
 
-      const tracksList = (tracks as TelemetryTrack[]) ?? [];
+      const tracksList = ((tracks as TelemetryTrack[]) ?? []).map((track) => ({
+        ...track,
+        calculated_value: 0,
+      }));
       
       // Calculate real data for tracks
       const { data: recentProofs } = await supabase
@@ -127,7 +134,7 @@ export function useAnalytics(startDate: string, endDate: string) {
           }).length ?? 0;
         }
         
-        (track as any).calculated_value = val;
+        track.calculated_value = val;
       }
 
       setTelemetryTracks(tracksList);
@@ -156,7 +163,7 @@ export function useAnalytics(startDate: string, endDate: string) {
       .single();
 
     if (error) throw error;
-    setTelemetryTracks((prev) => [...prev, data as TelemetryTrack]);
+    setTelemetryTracks((prev) => [...prev, { ...(data as TelemetryTrack), calculated_value: 0 }]);
   }, [user, telemetryTracks.length]);
 
   const deleteTrack = useCallback(async (trackId: string) => {

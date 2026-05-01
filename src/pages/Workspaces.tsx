@@ -5,6 +5,7 @@ import { useI18n } from '@/i18n';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState, LoadingFallback } from '@/components/ui/ErrorBoundary';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function Workspaces() {
   const { t } = useI18n();
@@ -23,7 +24,7 @@ export default function Workspaces() {
       const ws = await createWorkspace(name, desc);
       setShowCreate(false); setName(''); setDesc('');
       navigate(`/workspaces/${ws.id}`);
-    } catch (err) { setError(err instanceof Error ? err.message : 'Failed'); } finally { setCreating(false); }
+    } catch (err) { setError(getErrorMessage(err)); } finally { setCreating(false); }
   }
 
   if (loading) return <LoadingFallback />;

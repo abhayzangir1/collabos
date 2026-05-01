@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store';
 import type { Listing, SkillTag } from '@/types/database';
+import { getErrorMessage } from '@/lib/errors';
 
 export function useListings(workspaceId?: string) {
   const [listings, setListings] = useState<Listing[]>([]);
@@ -26,7 +27,7 @@ export function useListings(workspaceId?: string) {
       if (fetchError) throw fetchError;
       setListings((data as unknown as Listing[]) ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch listings');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

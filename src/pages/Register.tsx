@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Hexagon, ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { supabase } from '@/lib/supabase';
 import { DNA_TYPES } from '@/lib/constants';
 import type { DnaType } from '@/types/database';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function Register() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -59,13 +61,14 @@ export default function Register() {
 
       // If email confirmation is disabled in Supabase, a session is returned immediately.
       if (data.session) {
-        navigate('/dashboard');
+        const redirect = searchParams.get('redirect');
+        navigate(redirect?.startsWith('/') ? redirect : '/dashboard');
       } else {
         // Fallback just in case email confirmation is still enabled
         navigate('/verify-email', { state: { email } });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -283,7 +286,7 @@ export default function Register() {
 
         <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.8rem' }}>
           <span style={{ color: 'var(--text-muted)' }}>{t('auth.register.login')} </span>
-          <Link to="/login" style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('auth.register.loginLink')}</Link>
+          <Link to={searchParams.get('redirect') ? `/login?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : '/login'} style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('auth.register.loginLink')}</Link>
         </div>
       </div>
     </div>

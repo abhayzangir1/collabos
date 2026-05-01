@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store';
 import type { Trade, Milestone, Evidence, Message, Dispute, DisputeComment } from '@/types/database';
+import { getErrorMessage } from '@/lib/errors';
 
 const MESSAGES_PER_PAGE = 30;
 
@@ -31,7 +32,7 @@ export function useTrades() {
       if (fetchError) throw fetchError;
       setTrades((data as unknown as Trade[]) ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch trades');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -129,8 +130,9 @@ export function useTrades() {
     await fetchTrades();
   }, [fetchTrades]);
 
-  const markMilestoneComplete = useCallback(async (milestoneId: string, _tradeId: string) => {
+  const markMilestoneComplete = useCallback(async (milestoneId: string, tradeId: string) => {
     if (!user) throw new Error('Not authenticated');
+    void tradeId;
 
     // Check for open disputes
     const { data: disputes } = await supabase
@@ -261,7 +263,7 @@ export function useTradeDetail(tradeId: string) {
     if (result && result.success) {
       setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, reactions: result.reactions } : m)));
     }
-  }, [user, messages]);
+  }, [user]);
 
   const uploadEvidence = useCallback(async (milestoneId: string, file: File) => {
     if (!user || !tradeId) throw new Error('Not authenticated');
@@ -338,8 +340,27 @@ export function useTradeDetail(tradeId: string) {
     );
   }, [user]);
 
-  // Re-export markMilestoneComplete from useTrades for convenience
-  const { markMilestoneComplete } = useTrades();
+  const markMilestoneComplete = useCallback(async (milestoneId: string) => {
+    if (!user) throw new Error('Not authenticated');
+
+    const { data: disputes } = await supabase
+      .from('disputes')
+      .select('id')
+      .eq('milestone_id', milestoneId)
+      .in('status', ['Open', 'Under Review']);
+
+    if (disputes && disputes.length > 0) {
+      throw new Error('Cannot mark complete while a dispute is open on this milestone.');
+    }
+
+    const { error: rpcError } = await supabase.rpc('confirm_milestone', {
+      p_milestone_id: milestoneId,
+      p_user_id: user.id
+    });
+
+    if (rpcError) throw rpcError;
+    await fetchAll();
+  }, [fetchAll, user]);
 
   return {
     trade,

@@ -18,7 +18,7 @@ export default function WorkspaceDetail() {
   const { id } = useParams<{ id: string }>();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { workspace, members, invitations, loading, generateInvite, revokeInvite, changeMemberRole, removeMember, updateWorkspace, refetch } = useWorkspaceDetail(id ?? '');
+  const { workspace, members, invitations, loading, generateInvite, revokeInvite, changeMemberRole, removeMember, updateWorkspace, deleteWorkspace, refetch } = useWorkspaceDetail(id ?? '');
   const { listings } = useListings(id);
   const { trades, acceptTrade } = useTrades();
   const { user } = useAuthStore();
@@ -263,7 +263,7 @@ export default function WorkspaceDetail() {
       </Modal>
 
       {/* Delete Workspace */}
-      <ConfirmDialog isOpen={showDelete} onClose={() => setShowDelete(false)} onConfirm={async () => { /* delete handled by parent */ navigate('/workspaces'); }} title={t('workspaces.settings.delete')} message={t('workspaces.settings.deleteConfirm')} confirmLabel={t('common.delete')} danger />
+      <ConfirmDialog isOpen={showDelete} onClose={() => setShowDelete(false)} onConfirm={async () => { await deleteWorkspace(); navigate('/workspaces'); }} title={t('workspaces.settings.delete')} message={t('workspaces.settings.deleteConfirm')} confirmLabel={t('common.delete')} danger />
     </div>
   );
 }

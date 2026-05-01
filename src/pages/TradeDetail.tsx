@@ -8,6 +8,7 @@ import { useRealtime, usePresence } from '@/hooks/useRealtime';
 import { LoadingFallback } from '@/components/ui/ErrorBoundary';
 import { getStatusColor, formatRelativeTime, formatDate, validateFileUpload } from '@/lib/utils';
 import { CHAT_REACTIONS, ALLOWED_FILE_TYPES, MAX_FILE_SIZE_MB, DISPUTE_ESCALATION_DAYS } from '@/lib/constants';
+import { getErrorMessage } from '@/lib/errors';
 
 const DisputePanel = lazy(() => import('@/components/trades/DisputePanel'));
 
@@ -40,7 +41,7 @@ export default function TradeDetail() {
 
   async function handleMarkComplete(msId: string) {
     setMsLoading(msId); setMsError('');
-    try { await markMilestoneComplete(msId, id!); } catch (err) { setMsError(err instanceof Error ? err.message : 'Failed'); } finally { setMsLoading(null); }
+    try { await markMilestoneComplete(msId); } catch (err) { setMsError(getErrorMessage(err)); } finally { setMsLoading(null); }
   }
 
   async function handleSendMessage() {

@@ -21,6 +21,7 @@ const TradeDetail = lazy(() => import('@/pages/TradeDetail'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const Workspaces = lazy(() => import('@/pages/Workspaces'));
 const WorkspaceDetail = lazy(() => import('@/pages/WorkspaceDetail'));
+const WorkspaceJoin = lazy(() => import('@/pages/WorkspaceJoin'));
 const KnowledgeBase = lazy(() => import('@/pages/KnowledgeBase'));
 const Settings = lazy(() => import('@/pages/Settings'));
 
@@ -106,6 +107,7 @@ export default function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route path="/workspaces/join/:token" element={<WorkspaceJoin />} />
                 <Route path="/knowledge-base" element={<KnowledgeBase />} />
                 <Route path="/knowledge-base/:section" element={<KnowledgeBase />} />
                 <Route path="/knowledge-base/:section/:article" element={<KnowledgeBase />} />

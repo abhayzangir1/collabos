@@ -5,6 +5,7 @@ import { useI18n } from '@/i18n';
 import { getStatusColor, formatRelativeTime } from '@/lib/utils';
 import { MIN_DISPUTE_REASON_LENGTH } from '@/lib/constants';
 import type { Milestone, Dispute } from '@/types/database';
+import { getErrorMessage } from '@/lib/errors';
 
 interface DisputePanelProps {
   tradeId: string;
@@ -27,7 +28,7 @@ export default function DisputePanel({ milestones, disputes, onOpenDispute, onAd
     if (!selectedMs) { setError('Select a milestone.'); return; }
     if (reason.length < MIN_DISPUTE_REASON_LENGTH) { setError(t('trades.dispute.reasonError')); return; }
     setLoading(true); setError('');
-    try { await onOpenDispute(selectedMs, reason); setReason(''); setSelectedMs(''); } catch (err) { setError(err instanceof Error ? err.message : 'Failed'); } finally { setLoading(false); }
+    try { await onOpenDispute(selectedMs, reason); setReason(''); setSelectedMs(''); } catch (err) { setError(getErrorMessage(err)); } finally { setLoading(false); }
   }
 
   async function handleComment(disputeId: string) {

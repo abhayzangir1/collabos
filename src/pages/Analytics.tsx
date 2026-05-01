@@ -11,6 +11,7 @@ import { formatDate, getDomainColor } from '@/lib/utils';
 import { exportCSV, exportJSON, exportPDF, exportProfessionalReport } from '@/lib/exportUtils';
 import { MAX_CUSTOM_TELEMETRY_TRACKS, METRIC_TYPES } from '@/lib/constants';
 import type { SkillTag, MetricType } from '@/types/database';
+import { getErrorMessage } from '@/lib/errors';
 
 const CHART_COLORS = ['#C9A84C', '#3B82F6', '#EC4899', '#22C55E', '#F59E0B', '#8B5CF6', '#06B6D4', '#6366F1'];
 
@@ -37,7 +38,7 @@ export default function Analytics() {
   async function handleCreateTrack() {
     if (!trackName || trackTags.length === 0) { setTrackError('Name and at least one skill tag required.'); return; }
     setTrackLoading(true); setTrackError('');
-    try { await createTrack(trackName, trackTags, trackMetric); setShowTrackForm(false); setTrackName(''); setTrackTags([]); } catch (err) { setTrackError(err instanceof Error ? err.message : 'Failed'); } finally { setTrackLoading(false); }
+    try { await createTrack(trackName, trackTags, trackMetric); setShowTrackForm(false); setTrackName(''); setTrackTags([]); } catch (err) { setTrackError(getErrorMessage(err)); } finally { setTrackLoading(false); }
   }
 
   const trustChartData = trustHistory.map((h) => ({
@@ -252,7 +253,7 @@ export default function Analytics() {
                   </div>
                   <div style={{ marginTop: '1rem', textAlign: 'center', padding: '1.5rem 0' }}>
                     <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--accent)' }}>
-                      {(track as any).calculated_value ?? 0}
+                      {track.calculated_value}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '0.25rem' }}>
                       {track.metric_type.replace('_', ' ')}

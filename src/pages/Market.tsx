@@ -11,6 +11,7 @@ import { EmptyState, LoadingFallback } from '@/components/ui/ErrorBoundary';
 import type { SkillTag, Listing, Proof } from '@/types/database';
 import { supabase } from '@/lib/supabase';
 import { MIN_MILESTONES, MAX_MILESTONES } from '@/lib/constants';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function Market() {
   const { t } = useI18n();
@@ -95,13 +96,13 @@ export default function Market() {
         await createListing({ skill_offered: formOffered, skill_offered_tags: formOfferedTags, skill_requested: formRequested, skill_requested_tags: formRequestedTags, hours_range: Number(formHours) || 0, description: formDescription });
       }
       setShowCreateForm(false); resetForm();
-    } catch (err) { setFormError(err instanceof Error ? err.message : 'Failed'); } finally { setFormLoading(false); }
+    } catch (err) { setFormError(getErrorMessage(err)); } finally { setFormLoading(false); }
   }
 
   async function handleDelete() {
     if (!deleteTarget) return;
     try { await deleteListing(deleteTarget); setDeleteTarget(null); setDeleteError('');
-    } catch (err) { setDeleteError(err instanceof Error ? err.message : 'Failed'); }
+    } catch (err) { setDeleteError(getErrorMessage(err)); }
   }
 
   async function handlePropose() {
@@ -113,7 +114,7 @@ export default function Market() {
       if (ms.length < MIN_MILESTONES) { setProposeError(`Minimum ${MIN_MILESTONES} milestones required.`); return; }
       await proposeTrade(proposeTarget.id, proposeTarget.user_id, ms);
       setProposeTarget(null); setProposeStep(1);
-    } catch (err) { setProposeError(err instanceof Error ? err.message : 'Failed'); } finally { setProposeLoading(false); }
+    } catch (err) { setProposeError(getErrorMessage(err)); } finally { setProposeLoading(false); }
   }
 
   if (loading) return <LoadingFallback />;

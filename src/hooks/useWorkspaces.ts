@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store';
 import type { Workspace, WorkspaceMember, WorkspaceInvitation } from '@/types/database';
+import { getErrorMessage } from '@/lib/errors';
 
 export function useWorkspaces() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -40,7 +41,7 @@ export function useWorkspaces() {
 
       setWorkspaces(enriched);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch workspaces');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -158,6 +159,14 @@ export function useWorkspaceDetail(workspaceId: string) {
     setWorkspace((prev) => prev ? { ...prev, ...updates } : null);
   }, [workspaceId]);
 
+  const deleteWorkspace = useCallback(async () => {
+    if (!workspaceId) return;
+    await supabase.from('workspace_members').delete().eq('workspace_id', workspaceId);
+    await supabase.from('workspace_invitations').delete().eq('workspace_id', workspaceId);
+    const { error } = await supabase.from('workspaces').delete().eq('id', workspaceId);
+    if (error) throw error;
+  }, [workspaceId]);
+
   return {
     workspace,
     members,
@@ -168,6 +177,7 @@ export function useWorkspaceDetail(workspaceId: string) {
     changeMemberRole,
     removeMember,
     updateWorkspace,
+    deleteWorkspace,
     refetch: fetchDetail,
   };
 }

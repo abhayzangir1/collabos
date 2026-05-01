@@ -10,6 +10,7 @@ import { validateFileUpload } from '@/lib/utils';
 import { exportProofsPDF } from '@/lib/exportUtils';
 import { MAX_SKILL_TAGS_PER_PROOF, ALLOWED_FILE_TYPES, MAX_FILE_SIZE_MB } from '@/lib/constants';
 import type { SkillTag, Proof } from '@/types/database';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function ProofChain() {
   const { t } = useI18n();
@@ -93,7 +94,7 @@ export default function ProofChain() {
       setShowForm(false);
       resetForm();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save proof');
+      setFormError(getErrorMessage(err));
     } finally {
       setFormLoading(false);
     }

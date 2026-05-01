@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { DNA_TYPES } from '@/lib/constants';
 import { formatRelativeTime } from '@/lib/utils';
 import type { DnaType } from '@/types/database';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function Settings() {
   const { t } = useI18n();
@@ -80,7 +81,7 @@ export default function Settings() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
+      setError(getErrorMessage(err));
     } finally { 
       setSaving(false); 
     }
@@ -89,7 +90,6 @@ export default function Settings() {
   async function handleResetPassword() {
     if (!user?.email) return;
     await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: `${window.location.origin}/settings` });
-    await supabase.from('audit_log').insert({ user_id: user?.id, event_type: 'password_change', metadata: {} });
     setResetSent(true);
   }
 

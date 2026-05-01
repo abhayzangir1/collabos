@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Hexagon, Eye, EyeOff } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { supabase } from '@/lib/supabase';
@@ -9,6 +10,7 @@ import type { Profile } from '@/types/database';
 export default function Login() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { setUser, setSession, setProfile } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +40,8 @@ export default function Login() {
           .single();
 
         if (profileData) setProfile(profileData as Profile);
-        navigate('/dashboard');
+        const redirect = searchParams.get('redirect');
+        navigate(redirect?.startsWith('/') ? redirect : '/dashboard');
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed';
@@ -200,7 +203,7 @@ export default function Login() {
               </Link>
 
               <span style={{ color: 'var(--text-muted)' }}>{t('auth.login.register')} </span>
-              <Link to="/register" style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('auth.login.registerLink')}</Link>
+              <Link to={searchParams.get('redirect') ? `/register?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : '/register'} style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('auth.login.registerLink')}</Link>
             </>
           )}
         </div>

@@ -61,44 +61,42 @@ export default function Dashboard() {
   const [activities, setActivities] = useState<ActivityFeedItem[]>([]);
   const [pendingMilestone, setPendingMilestone] = useState<{ tradeId: string } | null>(null);
   const [connectionError, setConnectionError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [kpisLoading, setKpisLoading] = useState(true);
+  const [feedLoading, setFeedLoading] = useState(true);
 
   const seenIds = useRef(new Set<string>());
 
   const fetchKPIs = useCallback(async () => {
     if (!user) return;
+    setKpisLoading(true);
     try {
       const [proofs, trades] = await Promise.all([
-        supabase.from('proofs').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('trades').select('*', { count: 'exact', head: true })
+        supabase.from('proofs').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('trades').select('id', { count: 'exact' })
           .or(`proposer_user_id.eq.${user.id},recipient_user_id.eq.${user.id}`)
           .eq('status', 'Active'),
       ]);
 
       setProofCount(proofs.count ?? 0);
-      setActiveTradeCount(trades.count ?? 0);
+      setActiveTradeCount(trades.count ?? trades.data?.length ?? 0);
       setTrustScore(profile?.current_trust_score ?? 0);
 
-      // Check for pending milestone
-      if ((trades.count ?? 0) > 0) {
-        const { data: activeTrades } = await supabase
-          .from('trades')
-          .select('id')
-          .or(`proposer_user_id.eq.${user.id},recipient_user_id.eq.${user.id}`)
-          .eq('status', 'Active')
-          .limit(1);
-
-        if (activeTrades && activeTrades.length > 0 && activeTrades[0]) {
-          setPendingMilestone({ tradeId: activeTrades[0].id as string });
-        }
+      const firstActiveTrade = trades.data?.[0];
+      if (firstActiveTrade) {
+        setPendingMilestone({ tradeId: firstActiveTrade.id as string });
+      } else {
+        setPendingMilestone(null);
       }
     } catch {
       // Error handled by loading state
+    } finally {
+      setKpisLoading(false);
     }
   }, [user, profile]);
 
   const fetchActivityFeed = useCallback(async () => {
     if (!user) return;
+    setFeedLoading(true);
     try {
       const { data } = await supabase
         .from('activity_feed')
@@ -119,18 +117,17 @@ export default function Dashboard() {
       }
     } catch {
       // silently handled
+    } finally {
+      setFeedLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    async function init() {
-      setLoading(true);
-      await Promise.all([fetchKPIs(), fetchActivityFeed()]);
-      setLoading(false);
-      clearActivity();
-    }
-    init();
-  }, [fetchKPIs, fetchActivityFeed, clearActivity]);
+    if (!user) return;
+    void fetchKPIs();
+    void fetchActivityFeed();
+    clearActivity();
+  }, [user, fetchKPIs, fetchActivityFeed, clearActivity]);
 
   // Realtime subscriptions
   useEffect(() => {
@@ -174,16 +171,6 @@ export default function Dashboard() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="page-container">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
-          <div className="spinner" />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="page-container">
       <h1 style={{ fontSize: '1.75rem', fontWeight: 900, marginBottom: '1.5rem' }}>{t('dashboard.title')}</h1>
@@ -218,7 +205,7 @@ export default function Dashboard() {
                 {kpi.label}
               </div>
               <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent)' }}>
-                <CountUp end={kpi.value} />
+                {kpisLoading ? <div className="spinner" style={{ width: 18, height: 18 }} /> : <CountUp end={kpi.value} />}
               </div>
             </div>
           </div>
@@ -269,7 +256,11 @@ export default function Dashboard() {
           <h3 style={{ fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '1rem' }}>
             {t('dashboard.feed.title')}
           </h3>
-          {activities.length === 0 ? (
+          {feedLoading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+              <div className="spinner" />
+            </div>
+          ) : activities.length === 0 ? (
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', padding: '1rem 0' }}>
               {t('dashboard.feed.empty')}
             </p>

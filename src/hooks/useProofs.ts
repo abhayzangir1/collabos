@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store';
 import type { Proof, SkillTag } from '@/types/database';
 import { MAX_PINNED_PROOFS, SIGNED_URL_EXPIRY_SECONDS } from '@/lib/constants';
+import { getErrorMessage } from '@/lib/errors';
 
 export function useProofs() {
   const [proofs, setProofs] = useState<Proof[]>([]);
@@ -24,7 +25,7 @@ export function useProofs() {
       if (fetchError) throw fetchError;
       setProofs((data as Proof[]) ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch proofs');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
