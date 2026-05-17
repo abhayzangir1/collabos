@@ -1,9 +1,10 @@
 node_modules
 dist
 .vercel
+# Environment variables
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
 *.tsbuildinfo
 
 # Internal dev files — never commit
